@@ -294,14 +294,18 @@ const seedInitialData = async () => {
 
 
 // --- SERVER START & DB CONNECTION ---
+
+// Connect to MongoDB with error catching
 mongoose.connect(MONGODB_URI)
   .then(async () => {
     console.log('✅ Connected to MongoDB Database');
     await seedInitialData();
-    app.listen(PORT, () => {
-      console.log(`🚀 Kirinyaga South Super League Backend running on http://localhost:${PORT}`);
-    });
   })
   .catch((err) => {
     console.error('❌ MongoDB Connection Error:', err.message);
   });
+
+// Start server immediately so Render detects the port
+app.listen(PORT, () => {
+  console.log(`🚀 Kirinyaga South Super League Backend running on port ${PORT}`);
+});
