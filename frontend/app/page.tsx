@@ -2,32 +2,14 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import {
-  Trophy,
-  Calendar,
-  Shield,
-  MapPin,
-  Phone,
-  Mail,
-  Plus,
-  Edit3,
-  Lock,
-  Unlock,
-  ChevronRight,
-  ChevronLeft,
-  BarChart3,
-  Info,
-  X,
-  Menu,
-  CheckCircle2,
-  AlertCircle,
-  Flame,
-  Search,
-  Check,
-  User,
-  Medal
+  Trophy, Calendar, Shield, MapPin, Phone, Mail, Plus, Edit3, Lock, Unlock,
+  ChevronRight, ChevronLeft, BarChart3, Info, X, Menu, Flame, MessageSquare,
+  Users, Star, Trash2, Video
 } from 'lucide-react';
 
-// --- INITIAL DATA ---
+const BACKEND_URL = 'https://kirinyaga-south-super-league-6.onrender.com';
+
+// --- INTERFACES ---
 interface Team {
   id: string;
   name: string;
@@ -40,6 +22,7 @@ interface Team {
   points: number;
   logo: string;
   town: string;
+  _id?: string;
 }
 
 interface Match {
@@ -52,63 +35,84 @@ interface Match {
   date: string;
   venue: string;
   status: 'Upcoming' | 'Completed';
+  _id?: string;
 }
 
-const INITIAL_TEAMS: Team[] = [
-  { id: '1', name: 'Kerugoya Stars FC', played: 10, won: 7, drawn: 2, lost: 1, gf: 22, ga: 8, points: 23, logo: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&q=80&w=300', town: 'Kerugoya' },
-  { id: '2', name: 'Sagana United', played: 10, won: 6, drawn: 3, lost: 1, gf: 19, ga: 9, points: 21, logo: 'https://images.unsplash.com/photo-1517927033932-b3d18e61fb3a?auto=format&fit=crop&q=80&w=300', town: 'Sagana' },
-  { id: '3', name: 'Wang\'uru Warriors', played: 10, won: 6, drawn: 2, lost: 2, gf: 18, ga: 10, points: 20, logo: 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&q=80&w=300', town: 'Wang\'uru' },
-  { id: '4', name: 'Mwea Rice Strikers', played: 10, won: 5, drawn: 4, lost: 1, gf: 15, ga: 7, points: 19, logo: 'https://images.unsplash.com/photo-1560272564-c83b66b1ad12?auto=format&fit=crop&q=80&w=300', town: 'Mwea' },
-  { id: '5', name: 'Makutano Heroes', played: 10, won: 5, drawn: 2, lost: 3, gf: 16, ga: 12, points: 17, logo: 'https://images.unsplash.com/photo-1543351611-c82399575a20?auto=format&fit=crop&q=80&w=300', town: 'Makutano' },
-  { id: '6', name: 'Kutus City FC', played: 10, won: 4, drawn: 4, lost: 2, gf: 14, ga: 11, points: 16, logo: 'https://images.unsplash.com/photo-1518091043644-c1d4457512c6?auto=format&fit=crop&q=80&w=300', town: 'Kutus' },
-  { id: '7', name: 'Kandongu Athletic', played: 10, won: 4, drawn: 3, lost: 3, gf: 13, ga: 12, points: 15, logo: 'https://images.unsplash.com/photo-1522778119026-d647f0596c20?auto=format&fit=crop&q=80&w=300', town: 'Kandongu' },
-  { id: '8', name: 'Mutithi Falcons', played: 10, won: 3, drawn: 4, lost: 3, gf: 11, ga: 11, points: 13, logo: 'https://images.unsplash.com/photo-1579952363873-27f3bade9f55?auto=format&fit=crop&q=80&w=300', town: 'Mutithi' },
-  { id: '9', name: 'Kiamaciri Rangers', played: 10, won: 3, drawn: 3, lost: 4, gf: 10, ga: 14, points: 12, logo: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&q=80&w=300', town: 'Kiamaciri' },
-  { id: '10', name: 'Thiba River FC', played: 10, won: 2, drawn: 4, lost: 4, gf: 9, ga: 13, points: 10, logo: 'https://images.unsplash.com/photo-1517927033932-b3d18e61fb3a?auto=format&fit=crop&q=80&w=300', town: 'Thiba' },
-  { id: '11', name: 'Tebere Lions', played: 10, won: 2, drawn: 3, lost: 5, gf: 8, ga: 15, points: 9, logo: 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&q=80&w=300', town: 'Tebere' },
-  { id: '12', name: 'Kianyaga Stars', played: 10, won: 2, drawn: 2, lost: 6, gf: 7, ga: 17, points: 8, logo: 'https://images.unsplash.com/photo-1560272564-c83b66b1ad12?auto=format&fit=crop&q=80&w=300', town: 'Kianyaga' },
-  { id: '13', name: 'Kagio Tigers', played: 10, won: 1, drawn: 3, lost: 6, gf: 6, ga: 18, points: 6, logo: 'https://images.unsplash.com/photo-1543351611-c82399575a20?auto=format&fit=crop&q=80&w=300', town: 'Kagio' },
-  { id: '14', name: 'Riakiania United', played: 10, won: 0, drawn: 3, lost: 7, gf: 4, ga: 19, points: 3, logo: 'https://images.unsplash.com/photo-1518091043644-c1d4457512c6?auto=format&fit=crop&q=80&w=300', town: 'Riakiania' }
-];
+interface UserMessage {
+  id: string;
+  sender: string;
+  text: string;
+  timestamp: string;
+}
 
-const INITIAL_MATCHES: Match[] = [
-  { id: 'm1', gameweek: 11, homeTeamId: '1', awayTeamId: '2', homeScore: null, awayScore: null, date: '2026-09-12 15:00', venue: 'Kerugoya Stadium', status: 'Upcoming' },
-  { id: 'm2', gameweek: 11, homeTeamId: '3', awayTeamId: '4', homeScore: null, awayScore: null, date: '2026-09-12 16:30', venue: 'Wang\'uru Grounds', status: 'Upcoming' },
-  { id: 'm3', gameweek: 11, homeTeamId: '5', awayTeamId: '6', homeScore: null, awayScore: null, date: '2026-09-13 14:00', venue: 'Makutano Complex', status: 'Upcoming' },
-  { id: 'm4', gameweek: 10, homeTeamId: '1', awayTeamId: '14', homeScore: 3, awayScore: 0, date: '2026-09-05 15:00', venue: 'Kerugoya Stadium', status: 'Completed' },
-  { id: 'm5', gameweek: 10, homeTeamId: '2', awayTeamId: '13', homeScore: 2, awayScore: 1, date: '2026-09-05 16:00', venue: 'Sagana Stadium', status: 'Completed' },
-  { id: 'm6', gameweek: 10, homeTeamId: '3', awayTeamId: '12', homeScore: 4, awayScore: 1, date: '2026-09-06 15:00', venue: 'Wang\'uru Grounds', status: 'Completed' }
-];
+interface TeamComment {
+  id: string;
+  teamName: string;
+  comment: string;
+  timestamp: string;
+}
+
+// --- HELPER COMPONENT FOR MEDIA (IMAGE/VIDEO) ---
+const MediaRenderer = ({ url, className }: { url: string, className: string }) => {
+  if (!url) return <div className={`bg-slate-800 ${className}`}></div>;
+  const isVideo = url.match(/\.(mp4|webm|ogg)$/i) || url.includes('video');
+  
+  if (isVideo) {
+    return (
+      <video src={url} autoPlay loop muted playsInline className={`object-cover ${className}`} />
+    );
+  }
+  return <img src={url} alt="media" className={`object-cover ${className}`} />;
+};
 
 export default function KirinyagaSouthSuperLeague() {
   // --- STATE ---
-  const [teams, setTeams] = useState<Team[]>(INITIAL_TEAMS);
-  const [matches, setMatches] = useState<Match[]>(INITIAL_MATCHES);
+  const [teams, setTeams] = useState<Team[]>([]);
+  const [matches, setMatches] = useState<Match[]>([]);
+  
+  // Authentication
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const [showAdminModal, setShowAdminModal] = useState<boolean>(false);
+  const [adminEmail, setAdminEmail] = useState<string>('');
   const [adminPassword, setAdminPassword] = useState<string>('');
   const [adminError, setAdminError] = useState<string>('');
+  
+  // Navigation
   const [activeSection, setActiveSection] = useState<string>('table');
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
-
-  // Dynamic slideshow index
   const [currentSlide, setCurrentSlide] = useState<number>(0);
 
-  // League Info state
+  // Community Features
+  const [messages, setMessages] = useState<UserMessage[]>([]);
+  const [newMessage, setNewMessage] = useState({ sender: '', text: '' });
+  
+  const [teamComments, setTeamComments] = useState<TeamComment[]>([]);
+  const [newComment, setNewComment] = useState({ teamName: '', comment: '' });
+
+  // Players of the Day/Match
+  const [potd, setPotd] = useState({ name: 'Outstanding Player', team: 'TBD', mediaUrl: 'https://images.unsplash.com/photo-1579952363873-27f3bade9f55?auto=format&fit=crop&q=80&w=300' });
+  const [potm, setPotm] = useState({ name: 'MVP', match: 'TBD', mediaUrl: 'https://images.unsplash.com/photo-1517927033932-b3d18e61fb3a?auto=format&fit=crop&q=80&w=300' });
+  const [showEditPlayerModal, setShowEditPlayerModal] = useState(false);
+  const [editingPlayerType, setEditingPlayerType] = useState<'potd' | 'potm'>('potd');
+  const [playerForm, setPlayerForm] = useState({ name: '', context: '', mediaUrl: '' });
+
+  // League Info
   const [leagueInfo, setLeagueInfo] = useState({
-    about: 'The Kirinyaga South Super League is the premier grassroots football championship in Kirinyaga South Sub-County. Aimed at nurturing local talent, promoting community health, and fostering unity among local youth through competitive sports.',
+    about: 'The Kirinyaga South Super League is the premier grassroots football championship in Kirinyaga South Sub-County.',
     location: 'Kirinyaga South Sub-County Stadium & Regional Pitches, Central Kenya',
     phone: '+254 712 345 678',
     email: 'info@kirinyagasouthleague.co.ke',
     address: 'P.O. Box 45 - Wang\'uru, Kirinyaga County'
   });
 
-  // Modal forms state
-  const [showAddTeamModal, setShowAddTeamModal] = useState<boolean>(false);
-  const [newTeam, setNewTeam] = useState({ name: '', town: '', logo: '' });
+  // Modal forms
+  const [showTeamModal, setShowTeamModal] = useState<boolean>(false);
+  const [editingTeam, setEditingTeam] = useState<Team | null>(null);
+  const [teamForm, setTeamForm] = useState({ name: '', town: '', logo: '', played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, points: 0 });
 
-  const [showAddFixtureModal, setShowAddFixtureModal] = useState<boolean>(false);
-  const [newFixture, setNewFixture] = useState({ homeTeamId: '', awayTeamId: '', date: '', venue: '', gameweek: 11 });
+  const [showFixtureModal, setShowFixtureModal] = useState<boolean>(false);
+  const [editingFixture, setEditingFixture] = useState<Match | null>(null);
+  const [fixtureForm, setFixtureForm] = useState({ homeTeamId: '', awayTeamId: '', date: '', venue: '', gameweek: 11 });
 
   const [editingMatch, setEditingMatch] = useState<Match | null>(null);
   const [matchScore, setMatchScore] = useState({ home: 0, away: 0 });
@@ -116,7 +120,46 @@ export default function KirinyagaSouthSuperLeague() {
   const [editingInfo, setEditingInfo] = useState<boolean>(false);
   const [tempInfo, setTempInfo] = useState(leagueInfo);
 
-  // --- AUTOMATIC SLIDESHOW EFFECT (Every 5 seconds) ---
+  // --- INITIAL DATA FETCH ---
+  useEffect(() => {
+    const fetchLeagueData = async () => {
+      try {
+        const [teamsRes, matchesRes, infoRes] = await Promise.all([
+          fetch(`${BACKEND_URL}/api/teams`).catch(() => null),
+          fetch(`${BACKEND_URL}/api/matches`).catch(() => null),
+          fetch(`${BACKEND_URL}/api/info`).catch(() => null)
+        ]);
+
+        if (teamsRes && teamsRes.ok) {
+          const data = await teamsRes.json();
+          if (data.length) setTeams(data.map((t: any) => ({ ...t, id: t._id || t.id })));
+        }
+        
+        if (matchesRes && matchesRes.ok) {
+          const data = await matchesRes.json();
+          if (data.length) {
+            const formattedMatches = data.map((m: any) => ({
+              ...m,
+              id: m._id || m.id,
+              homeTeamId: m.homeTeam?._id || m.homeTeam,
+              awayTeamId: m.awayTeam?._id || m.awayTeam
+            }));
+            setMatches(formattedMatches);
+          }
+        }
+
+        if (infoRes && infoRes.ok) {
+          const data = await infoRes.json();
+          if (data && data.about) setLeagueInfo(data);
+        }
+      } catch (error) {
+        console.error("Error fetching backend data:", error);
+      }
+    };
+    fetchLeagueData();
+  }, []);
+
+  // Slideshow
   useEffect(() => {
     if (teams.length === 0) return;
     const interval = setInterval(() => {
@@ -125,7 +168,6 @@ export default function KirinyagaSouthSuperLeague() {
     return () => clearInterval(interval);
   }, [teams.length]);
 
-  // --- RE-CALCULATE STANDINGS dynamically from teams state sorted by Points -> GD -> GF ---
   const sortedTeams = useMemo(() => {
     return [...teams].sort((a, b) => {
       const gdA = a.gf - a.ga;
@@ -139,57 +181,88 @@ export default function KirinyagaSouthSuperLeague() {
   // --- HANDLERS ---
   const handleAdminLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (adminPassword === 'admin123' || adminPassword === 'superleague') {
+    const authorizedEmails = ['muchirimunene031@gmail.com', 'munene398@gmail.com'];
+    
+    if (authorizedEmails.includes(adminEmail.toLowerCase()) && adminPassword === 'KIMBIMBI@254') {
       setIsAdmin(true);
       setShowAdminModal(false);
+      setAdminEmail('');
       setAdminPassword('');
       setAdminError('');
     } else {
-      setAdminError('Invalid passcode. Try "admin123"');
+      setAdminError('Access Denied. Unauthorized email or incorrect password.');
     }
   };
 
-  const handleLogout = () => {
-    setIsAdmin(false);
+  const openTeamModal = (team: Team | null = null) => {
+    if (team) {
+      setEditingTeam(team);
+      setTeamForm(team);
+    } else {
+      setEditingTeam(null);
+      setTeamForm({ name: '', town: '', logo: '', played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, points: 0 });
+    }
+    setShowTeamModal(true);
   };
 
-  const handleAddTeam = (e: React.FormEvent) => {
+  const handleSaveTeam = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newTeam.name) return;
-    const teamObj: Team = {
-      id: Date.now().toString(),
-      name: newTeam.name,
-      town: newTeam.town || 'Kirinyaga',
-      played: 0,
-      won: 0,
-      drawn: 0,
-      lost: 0,
-      gf: 0,
-      ga: 0,
-      points: 0,
-      logo: newTeam.logo || 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&q=80&w=300'
-    };
-    setTeams([...teams, teamObj]);
-    setNewTeam({ name: '', town: '', logo: '' });
-    setShowAddTeamModal(false);
+    if (!teamForm.name) return;
+    
+    if (editingTeam) {
+      setTeams(teams.map(t => t.id === editingTeam.id ? { ...t, ...teamForm } : t));
+    } else {
+      setTeams([...teams, { ...teamForm, id: Date.now().toString() }]);
+    }
+    setShowTeamModal(false);
   };
 
-  const handleAddFixture = (e: React.FormEvent) => {
+  const handleDeleteTeam = (id: string) => {
+    if (confirm("Are you sure you want to remove this team?")) {
+      setTeams(teams.filter(t => t.id !== id));
+    }
+  };
+
+  const openFixtureModal = (fixture: Match | null = null) => {
+    if (fixture) {
+      setEditingFixture(fixture);
+      setFixtureForm({
+        homeTeamId: fixture.homeTeamId,
+        awayTeamId: fixture.awayTeamId,
+        date: fixture.date,
+        venue: fixture.venue,
+        gameweek: fixture.gameweek
+      });
+    } else {
+      setEditingFixture(null);
+      setFixtureForm({ homeTeamId: '', awayTeamId: '', date: '', venue: '', gameweek: 11 });
+    }
+    setShowFixtureModal(true);
+  };
+
+  const handleSaveFixture = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newFixture.homeTeamId || !newFixture.awayTeamId) return;
-    const fixObj: Match = {
-      id: 'm_' + Date.now(),
-      gameweek: Number(newFixture.gameweek),
-      homeTeamId: newFixture.homeTeamId,
-      awayTeamId: newFixture.awayTeamId,
-      homeScore: null,
-      awayScore: null,
-      date: newFixture.date || '2026-09-20 15:00',
-      venue: newFixture.venue || 'Sub-County Stadium',
-      status: 'Upcoming'
-    };
-    setMatches([fixObj, ...matches]);
-    setShowAddFixtureModal(false);
+    if (!fixtureForm.homeTeamId || !fixtureForm.awayTeamId) return;
+
+    if (editingFixture) {
+      setMatches(matches.map(m => m.id === editingFixture.id ? { ...m, ...fixtureForm } : m));
+    } else {
+      const fixObj: Match = {
+        id: 'm_' + Date.now(),
+        ...fixtureForm,
+        homeScore: null,
+        awayScore: null,
+        status: 'Upcoming'
+      };
+      setMatches([fixObj, ...matches]);
+    }
+    setShowFixtureModal(false);
+  };
+
+  const handleDeleteFixture = (id: string) => {
+    if (confirm("Remove this match fixture?")) {
+      setMatches(matches.filter(m => m.id !== id));
+    }
   };
 
   const handleUpdateScore = (e: React.FormEvent) => {
@@ -199,21 +272,14 @@ export default function KirinyagaSouthSuperLeague() {
     const homeVal = Number(matchScore.home);
     const awayVal = Number(matchScore.away);
 
-    // Update match status
     const updatedMatches = matches.map((m) => {
       if (m.id === editingMatch.id) {
-        return {
-          ...m,
-          homeScore: homeVal,
-          awayScore: awayVal,
-          status: 'Completed' as const
-        };
+        return { ...m, homeScore: homeVal, awayScore: awayVal, status: 'Completed' as const };
       }
       return m;
     });
     setMatches(updatedMatches);
 
-    // Recalculate standings for affected teams if this match was previously upcoming
     if (editingMatch.status === 'Upcoming') {
       setTeams((prevTeams) =>
         prevTeams.map((team) => {
@@ -249,28 +315,47 @@ export default function KirinyagaSouthSuperLeague() {
         })
       );
     }
-
     setEditingMatch(null);
   };
 
-  const handleSaveInfo = (e: React.FormEvent) => {
+  const handleSavePlayer = (e: React.FormEvent) => {
     e.preventDefault();
-    setLeagueInfo(tempInfo);
-    setEditingInfo(false);
+    if (editingPlayerType === 'potd') {
+      setPotd({ name: playerForm.name, team: playerForm.context, mediaUrl: playerForm.mediaUrl });
+    } else {
+      setPotm({ name: playerForm.name, match: playerForm.context, mediaUrl: playerForm.mediaUrl });
+    }
+    setShowEditPlayerModal(false);
   };
+
+  const handlePostMessage = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newMessage.text || !newMessage.sender) return;
+    setMessages([{ id: Date.now().toString(), ...newMessage, timestamp: new Date().toLocaleString() }, ...messages]);
+    setNewMessage({ sender: '', text: '' });
+  };
+
+  const handlePostComment = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newComment.comment || !newComment.teamName) return;
+    setTeamComments([{ id: Date.now().toString(), ...newComment, timestamp: new Date().toLocaleString() }, ...teamComments]);
+    setNewComment({ teamName: '', comment: '' });
+  };
+
+  const deleteMessage = (id: string) => setMessages(messages.filter(m => m.id !== id));
+  const deleteComment = (id: string) => setTeamComments(teamComments.filter(c => c.id !== id));
 
   const currentSlideTeam = teams[currentSlide] || teams[0];
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans flex flex-col antialiased selection:bg-emerald-500 selection:text-black">
-      {/* BACKGROUND GRAPHICS & FOOTBALL EFFECTS */}
-      <div className="fixed inset-0 pointer-events-none opacity-20 z-0 bg-[radial-gradient(#10b981_1px,transparent_1px)] [background-size:24px_24px]"></div>
+      {/* BACKGROUND GRAPHICS (Updated transparency) */}
+      <div className="fixed inset-0 pointer-events-none opacity-[0.07] z-0 bg-[radial-gradient(#10b981_1px,transparent_1px)] [background-size:24px_24px] mix-blend-screen"></div>
 
       {/* --- TOP HEADER NAVIGATION --- */}
-      <header className="sticky top-0 z-40 bg-slate-900/90 backdrop-blur-md border-b border-emerald-900/40 shadow-xl">
+      <header className="sticky top-0 z-40 bg-slate-900/80 backdrop-blur-md border-b border-emerald-900/40 shadow-xl">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-20">
-            {/* Logo / Brand Name */}
             <div className="flex items-center space-x-3 cursor-pointer" onClick={() => setActiveSection('table')}>
               <div className="relative flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-tr from-emerald-600 via-teal-500 to-amber-400 p-0.5 shadow-lg shadow-emerald-900/30">
                 <div className="w-full h-full bg-slate-950 rounded-full flex items-center justify-center">
@@ -285,69 +370,32 @@ export default function KirinyagaSouthSuperLeague() {
               </div>
             </div>
 
-            {/* Header Fast Access Navigation */}
             <nav className="hidden md:flex items-center space-x-2">
-              <button
-                onClick={() => setActiveSection('table')}
-                className={`px-4 py-2 rounded-lg font-medium text-sm transition-all flex items-center space-x-2 ${
-                  activeSection === 'table' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30' : 'text-slate-300 hover:bg-slate-800'
-                }`}
-              >
-                <Trophy className="w-4 h-4" />
-                <span>Table Standings</span>
+              <button onClick={() => setActiveSection('table')} className={`px-4 py-2 rounded-lg font-medium text-sm transition-all flex items-center space-x-2 ${activeSection === 'table' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30' : 'text-slate-300 hover:bg-slate-800'}`}>
+                <Trophy className="w-4 h-4" /><span>Standings</span>
               </button>
-
-              <button
-                onClick={() => setActiveSection('matches')}
-                className={`px-4 py-2 rounded-lg font-medium text-sm transition-all flex items-center space-x-2 ${
-                  activeSection === 'matches' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30' : 'text-slate-300 hover:bg-slate-800'
-                }`}
-              >
-                <Flame className="w-4 h-4 text-amber-400" />
-                <span>Matches</span>
-              </button>
-
-              <button
-                onClick={() => setActiveSection('fixtures')}
-                className={`px-4 py-2 rounded-lg font-medium text-sm transition-all flex items-center space-x-2 ${
-                  activeSection === 'fixtures' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30' : 'text-slate-300 hover:bg-slate-800'
-                }`}
-              >
-                <Calendar className="w-4 h-4" />
-                <span>Fixtures</span>
+              <button onClick={() => setActiveSection('matches')} className={`px-4 py-2 rounded-lg font-medium text-sm transition-all flex items-center space-x-2 ${activeSection === 'matches' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30' : 'text-slate-300 hover:bg-slate-800'}`}>
+                <Flame className="w-4 h-4 text-amber-400" /><span>Matches</span>
               </button>
             </nav>
 
-            {/* Admin Controls & Login */}
             <div className="hidden lg:flex items-center space-x-3">
               {isAdmin ? (
                 <div className="flex items-center space-x-2 bg-emerald-950/80 border border-emerald-500/50 px-3 py-1.5 rounded-full text-xs font-semibold text-emerald-300">
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
                   <span>ADMIN ACCESS ACTIVE</span>
-                  <button
-                    onClick={handleLogout}
-                    className="ml-2 bg-rose-600/80 hover:bg-rose-600 text-white px-2.5 py-1 rounded-full text-xs transition-all"
-                  >
-                    Logout
-                  </button>
+                  <button onClick={() => setIsAdmin(false)} className="ml-2 bg-rose-600/80 hover:bg-rose-600 text-white px-2.5 py-1 rounded-full text-xs transition-all">Logout</button>
                 </div>
               ) : (
-                <button
-                  onClick={() => setShowAdminModal(true)}
-                  className="flex items-center space-x-2 bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-emerald-500/30 px-4 py-2 rounded-xl text-xs font-bold tracking-wider uppercase transition-all shadow-md"
-                >
+                <button onClick={() => setShowAdminModal(true)} className="flex items-center space-x-2 bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-emerald-500/30 px-4 py-2 rounded-xl text-xs font-bold tracking-wider uppercase transition-all shadow-md">
                   <Lock className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Admin Login</span>
+                  <span>Login</span>
                 </button>
               )}
             </div>
 
-            {/* Mobile Hamburger toggle */}
             <div className="md:hidden flex items-center space-x-2">
-              <button
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="p-2.5 rounded-xl bg-slate-800 text-slate-200 hover:bg-slate-700 focus:outline-none"
-              >
+              <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="p-2.5 rounded-xl bg-slate-800 text-slate-200 hover:bg-slate-700 focus:outline-none">
                 {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
               </button>
             </div>
@@ -357,71 +405,21 @@ export default function KirinyagaSouthSuperLeague() {
         {/* Mobile Nav Dropdown */}
         {mobileMenuOpen && (
           <div className="md:hidden bg-slate-900 border-b border-slate-800 px-4 pt-2 pb-6 space-y-2">
-            <button
-              onClick={() => { setActiveSection('table'); setMobileMenuOpen(false); }}
-              className="w-full text-left px-4 py-3 rounded-lg font-semibold text-slate-200 hover:bg-slate-800 flex items-center space-x-3"
-            >
-              <Trophy className="w-5 h-5 text-emerald-400" />
-              <span>Table Standings</span>
-            </button>
-            <button
-              onClick={() => { setActiveSection('matches'); setMobileMenuOpen(false); }}
-              className="w-full text-left px-4 py-3 rounded-lg font-semibold text-slate-200 hover:bg-slate-800 flex items-center space-x-3"
-            >
-              <Flame className="w-5 h-5 text-amber-400" />
-              <span>Matches</span>
-            </button>
-            <button
-              onClick={() => { setActiveSection('fixtures'); setMobileMenuOpen(false); }}
-              className="w-full text-left px-4 py-3 rounded-lg font-semibold text-slate-200 hover:bg-slate-800 flex items-center space-x-3"
-            >
-              <Calendar className="w-5 h-5 text-teal-400" />
-              <span>Fixtures</span>
-            </button>
-            <button
-              onClick={() => { setActiveSection('stats'); setMobileMenuOpen(false); }}
-              className="w-full text-left px-4 py-3 rounded-lg font-semibold text-slate-200 hover:bg-slate-800 flex items-center space-x-3"
-            >
-              <BarChart3 className="w-5 h-5 text-indigo-400" />
-              <span>League Stats</span>
-            </button>
-            <button
-              onClick={() => { setActiveSection('about'); setMobileMenuOpen(false); }}
-              className="w-full text-left px-4 py-3 rounded-lg font-semibold text-slate-200 hover:bg-slate-800 flex items-center space-x-3"
-            >
-              <Info className="w-5 h-5 text-blue-400" />
-              <span>About League</span>
-            </button>
-            <button
-              onClick={() => { setActiveSection('location'); setMobileMenuOpen(false); }}
-              className="w-full text-left px-4 py-3 rounded-lg font-semibold text-slate-200 hover:bg-slate-800 flex items-center space-x-3"
-            >
-              <MapPin className="w-5 h-5 text-rose-400" />
-              <span>Location</span>
-            </button>
-            <button
-              onClick={() => { setActiveSection('contacts'); setMobileMenuOpen(false); }}
-              className="w-full text-left px-4 py-3 rounded-lg font-semibold text-slate-200 hover:bg-slate-800 flex items-center space-x-3"
-            >
-              <Phone className="w-5 h-5 text-emerald-400" />
-              <span>Contacts</span>
-            </button>
-
+            {['table', 'matches', 'stats', 'messages', 'comments', 'about', 'location', 'contacts'].map((section) => (
+              <button
+                key={section}
+                onClick={() => { setActiveSection(section); setMobileMenuOpen(false); }}
+                className="w-full text-left px-4 py-3 rounded-lg font-semibold text-slate-200 hover:bg-slate-800 capitalize flex items-center space-x-3"
+              >
+                <span>{section}</span>
+              </button>
+            ))}
             <div className="pt-4 border-t border-slate-800">
               {isAdmin ? (
-                <button
-                  onClick={handleLogout}
-                  className="w-full py-2.5 bg-rose-600 text-white rounded-lg font-bold text-center text-sm"
-                >
-                  Logout Admin
-                </button>
+                <button onClick={() => setIsAdmin(false)} className="w-full py-2.5 bg-rose-600 text-white rounded-lg font-bold text-center text-sm">Logout</button>
               ) : (
-                <button
-                  onClick={() => { setShowAdminModal(true); setMobileMenuOpen(false); }}
-                  className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-bold text-center text-sm flex items-center justify-center space-x-2"
-                >
-                  <Lock className="w-4 h-4" />
-                  <span>Admin Login</span>
+                <button onClick={() => { setShowAdminModal(true); setMobileMenuOpen(false); }} className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-bold text-center text-sm flex items-center justify-center space-x-2">
+                  <Lock className="w-4 h-4" /><span>Login</span>
                 </button>
               )}
             </div>
@@ -429,458 +427,180 @@ export default function KirinyagaSouthSuperLeague() {
         )}
       </header>
 
-      {/* --- DYNAMIC SLIDESHOW HERO SECTION (Autoplay 5s) --- */}
+      {/* --- HERO SLIDESHOW --- */}
       <section className="relative w-full h-[320px] sm:h-[400px] overflow-hidden bg-slate-900 border-b border-emerald-950">
-        {/* Slide Image Backdrop */}
         {teams.map((t, idx) => (
-          <div
-            key={t.id}
-            className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
-              idx === currentSlide ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
-            }`}
-          >
-            <img
-              src={t.logo}
-              alt={t.name}
-              className="w-full h-full object-cover object-center filter brightness-[0.35] scale-105 transform transition-transform duration-[5000ms]"
-            />
+          <div key={t.id} className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${idx === currentSlide ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
+            <MediaRenderer url={t.logo} className="w-full h-full filter brightness-[0.35] scale-105 transform transition-transform duration-[5000ms]" />
             <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent"></div>
           </div>
         ))}
-
-        {/* Hero Overlay Content */}
-        <div className="relative z-10 max-w-7xl mx-auto h-full px-4 sm:px-6 lg:px-8 flex flex-col justify-end pb-8">
+        <div className="relative z-10 max-w-7xl mx-auto h-full px-4 flex flex-col justify-end pb-8">
           <div className="flex items-center space-x-3 mb-2">
-            <span className="bg-amber-400/20 text-amber-300 border border-amber-400/40 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider flex items-center space-x-1">
-              <Flame className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
-              <span>Official League Team Showcase</span>
-            </span>
-            <span className="text-slate-400 text-xs font-mono">
-              Auto-updating ({currentSlide + 1} / {teams.length})
+            <span className="bg-amber-400/20 text-amber-300 border border-amber-400/40 px-3 py-1 rounded-full text-xs font-bold uppercase flex items-center space-x-1">
+              <Flame className="w-3.5 h-3.5 text-amber-400 fill-amber-400" /><span>League Teams</span>
             </span>
           </div>
-
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+          <div className="flex justify-between items-end gap-4">
             <div>
-              <h2 className="text-3xl sm:text-5xl font-extrabold text-white tracking-tight drop-shadow-md">
-                {currentSlideTeam?.name}
-              </h2>
-              <p className="text-emerald-400 font-medium text-sm sm:text-base mt-1 flex items-center space-x-2">
-                <MapPin className="w-4 h-4" />
-                <span>Base Location: {currentSlideTeam?.town}, Kirinyaga</span>
-                <span className="text-slate-500">•</span>
-                <span>Points: {currentSlideTeam?.points} PTS</span>
+              <h2 className="text-3xl sm:text-5xl font-extrabold text-white">{currentSlideTeam?.name || 'Kirinyaga South'}</h2>
+              <p className="text-emerald-400 mt-1 flex items-center space-x-2">
+                <MapPin className="w-4 h-4" /><span>{currentSlideTeam?.town || 'Central'} • {currentSlideTeam?.points || 0} PTS</span>
               </p>
             </div>
-
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={() => setCurrentSlide((prev) => (prev === 0 ? teams.length - 1 : prev - 1))}
-                className="p-2.5 rounded-full bg-slate-900/80 hover:bg-emerald-600 text-white border border-slate-700 transition"
-              >
-                <ChevronLeft className="w-5 h-5" />
-              </button>
-              <button
-                onClick={() => setCurrentSlide((prev) => (prev + 1) % teams.length)}
-                className="p-2.5 rounded-full bg-slate-900/80 hover:bg-emerald-600 text-white border border-slate-700 transition"
-              >
-                <ChevronRight className="w-5 h-5" />
-              </button>
-            </div>
-          </div>
-
-          {/* Dots Indicator */}
-          <div className="flex space-x-1.5 mt-4">
-            {teams.map((_, idx) => (
-              <button
-                key={idx}
-                onClick={() => setCurrentSlide(idx)}
-                className={`h-1.5 rounded-full transition-all duration-500 ${
-                  idx === currentSlide ? 'w-8 bg-emerald-400' : 'w-2 bg-slate-700 hover:bg-slate-500'
-                }`}
-              />
-            ))}
           </div>
         </div>
       </section>
 
-      {/* --- MAIN BODY (LAYOUT WITH LEFT SIDEBAR NAVIGATION) --- */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full flex-grow">
+      {/* --- MAIN LAYOUT --- */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full flex-grow relative z-10">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           
-          {/* --- LEFT SIDEBAR NAVIGATION PANE --- */}
+          {/* LEFT SIDEBAR */}
           <aside className="lg:col-span-3 space-y-6">
             <div className="bg-slate-900/80 rounded-2xl p-4 border border-slate-800 shadow-xl backdrop-blur-sm sticky top-24">
               <div className="px-3 py-2 border-b border-slate-800 mb-3 flex items-center justify-between">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Navigation Menu</span>
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Menu</span>
                 <Shield className="w-4 h-4 text-emerald-400" />
               </div>
-
               <nav className="space-y-1">
-                <button
-                  onClick={() => setActiveSection('table')}
-                  className={`w-full flex items-center justify-between px-4 py-3 rounded-xl font-medium text-sm transition-all ${
-                    activeSection === 'table'
-                      ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg shadow-emerald-900/40'
-                      : 'text-slate-300 hover:bg-slate-800/80'
-                  }`}
-                >
-                  <div className="flex items-center space-x-3">
-                    <Trophy className="w-4 h-4 text-amber-400" />
-                    <span>Table</span>
-                  </div>
-                  <span className="text-xs bg-slate-950/50 px-2 py-0.5 rounded text-emerald-300 font-mono">{teams.length} Teams</span>
-                </button>
-
-                <button
-                  onClick={() => setActiveSection('matches')}
-                  className={`w-full flex items-center justify-between px-4 py-3 rounded-xl font-medium text-sm transition-all ${
-                    activeSection === 'matches'
-                      ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg shadow-emerald-900/40'
-                      : 'text-slate-300 hover:bg-slate-800/80'
-                  }`}
-                >
-                  <div className="flex items-center space-x-3">
-                    <Flame className="w-4 h-4 text-amber-400" />
-                    <span>Matches</span>
-                  </div>
-                </button>
-
-                <button
-                  onClick={() => setActiveSection('stats')}
-                  className={`w-full flex items-center justify-between px-4 py-3 rounded-xl font-medium text-sm transition-all ${
-                    activeSection === 'stats'
-                      ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg shadow-emerald-900/40'
-                      : 'text-slate-300 hover:bg-slate-800/80'
-                  }`}
-                >
-                  <div className="flex items-center space-x-3">
-                    <BarChart3 className="w-4 h-4 text-indigo-400" />
-                    <span>Stats</span>
-                  </div>
-                </button>
-
-                <button
-                  onClick={() => setActiveSection('about')}
-                  className={`w-full flex items-center justify-between px-4 py-3 rounded-xl font-medium text-sm transition-all ${
-                    activeSection === 'about'
-                      ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg shadow-emerald-900/40'
-                      : 'text-slate-300 hover:bg-slate-800/80'
-                  }`}
-                >
-                  <div className="flex items-center space-x-3">
-                    <Info className="w-4 h-4 text-blue-400" />
-                    <span>About</span>
-                  </div>
-                </button>
-
-                <button
-                  onClick={() => setActiveSection('location')}
-                  className={`w-full flex items-center justify-between px-4 py-3 rounded-xl font-medium text-sm transition-all ${
-                    activeSection === 'location'
-                      ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg shadow-emerald-900/40'
-                      : 'text-slate-300 hover:bg-slate-800/80'
-                  }`}
-                >
-                  <div className="flex items-center space-x-3">
-                    <MapPin className="w-4 h-4 text-rose-400" />
-                    <span>Location</span>
-                  </div>
-                </button>
-
-                <button
-                  onClick={() => setActiveSection('contacts')}
-                  className={`w-full flex items-center justify-between px-4 py-3 rounded-xl font-medium text-sm transition-all ${
-                    activeSection === 'contacts'
-                      ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg shadow-emerald-900/40'
-                      : 'text-slate-300 hover:bg-slate-800/80'
-                  }`}
-                >
-                  <div className="flex items-center space-x-3">
-                    <Phone className="w-4 h-4 text-emerald-400" />
-                    <span>Contacts</span>
-                  </div>
-                </button>
+                {[
+                  { id: 'table', icon: Trophy, label: 'Table Standings' },
+                  { id: 'matches', icon: Flame, label: 'Matches & Fixtures' },
+                  { id: 'stats', icon: BarChart3, label: 'Stats & Players' },
+                  { id: 'messages', icon: MessageSquare, label: 'Public Messages' },
+                  { id: 'comments', icon: Users, label: 'Team Comments' },
+                  { id: 'about', icon: Info, label: 'About' },
+                  { id: 'location', icon: MapPin, label: 'Location' },
+                  { id: 'contacts', icon: Phone, label: 'Contacts' }
+                ].map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => setActiveSection(item.id)}
+                    className={`w-full flex items-center justify-between px-4 py-3 rounded-xl font-medium text-sm transition-all ${activeSection === item.id ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg' : 'text-slate-300 hover:bg-slate-800/80'}`}
+                  >
+                    <div className="flex items-center space-x-3">
+                      <item.icon className="w-4 h-4" /><span>{item.label}</span>
+                    </div>
+                  </button>
+                ))}
               </nav>
 
-              {/* Admin Panel Quick Widget */}
-              <div className="mt-6 pt-4 border-t border-slate-800">
-                {isAdmin ? (
-                  <div className="space-y-2">
-                    <p className="text-xs text-emerald-400 font-semibold flex items-center space-x-1">
-                      <Unlock className="w-3.5 h-3.5" />
-                      <span>Admin Quick Actions</span>
-                    </p>
-                    <button
-                      onClick={() => setShowAddTeamModal(true)}
-                      className="w-full bg-slate-800 hover:bg-slate-700 text-emerald-300 border border-emerald-500/30 text-xs py-2 px-3 rounded-xl font-bold flex items-center justify-center space-x-2 transition"
-                    >
-                      <Plus className="w-4 h-4" />
-                      <span>Register New Team</span>
-                    </button>
-                    <button
-                      onClick={() => setShowAddFixtureModal(true)}
-                      className="w-full bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/30 text-xs py-2 px-3 rounded-xl font-bold flex items-center justify-center space-x-2 transition"
-                    >
-                      <Plus className="w-4 h-4" />
-                      <span>Add New Fixture</span>
-                    </button>
-                  </div>
-                ) : (
-                  <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800 text-center">
-                    <p className="text-xs text-slate-400">Are you a League Official?</p>
-                    <button
-                      onClick={() => setShowAdminModal(true)}
-                      className="mt-2 text-xs font-bold text-amber-400 hover:text-amber-300 underline"
-                    >
-                      Log in to update table & fixtures
-                    </button>
-                  </div>
-                )}
-              </div>
+              {isAdmin && (
+                <div className="mt-6 pt-4 border-t border-slate-800 space-y-2">
+                  <p className="text-xs text-emerald-400 font-semibold flex items-center space-x-1">
+                    <Unlock className="w-3.5 h-3.5" /><span>Admin Actions</span>
+                  </p>
+                  <button onClick={() => openTeamModal()} className="w-full bg-slate-800 hover:bg-slate-700 text-emerald-300 border border-emerald-500/30 text-xs py-2 px-3 rounded-xl font-bold flex justify-center items-center space-x-2">
+                    <Plus className="w-4 h-4" /><span>Add New Team</span>
+                  </button>
+                  <button onClick={() => openFixtureModal()} className="w-full bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/30 text-xs py-2 px-3 rounded-xl font-bold flex justify-center items-center space-x-2">
+                    <Plus className="w-4 h-4" /><span>Add Match Fixture</span>
+                  </button>
+                </div>
+              )}
             </div>
           </aside>
 
-          {/* --- MAIN CONTENT AREA --- */}
+          {/* MAIN CONTENT */}
           <main className="lg:col-span-9 space-y-8">
-
-            {/* --- SECTION 1: LEAGUE TABLE STANDINGS --- */}
-            {(activeSection === 'table' || activeSection === 'fixtures') && (
+            
+            {/* STANDINGS TABLE */}
+            {activeSection === 'table' && (
               <div className="bg-slate-900 rounded-2xl border border-slate-800 shadow-2xl overflow-hidden">
-                <div className="p-5 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 border-b border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div>
-                    <div className="flex items-center space-x-2">
-                      <Trophy className="w-6 h-6 text-amber-400" />
-                      <h3 className="text-xl font-extrabold text-white uppercase tracking-tight">
-                        Official League Standings
-                      </h3>
-                    </div>
-                    <p className="text-xs text-slate-400 mt-0.5">
-                      Kirinyaga South Super League 2026/2027 Season • Total {teams.length} Registered Teams
-                    </p>
+                <div className="p-5 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 border-b border-slate-800 flex justify-between items-center">
+                  <div className="flex items-center space-x-2">
+                    <Trophy className="w-6 h-6 text-amber-400" />
+                    <h3 className="text-xl font-extrabold text-white uppercase">League Standings</h3>
                   </div>
-
-                  {isAdmin && (
-                    <button
-                      onClick={() => setShowAddTeamModal(true)}
-                      className="inline-flex items-center space-x-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-lg transition"
-                    >
-                      <Plus className="w-4 h-4" />
-                      <span>Add New Team</span>
-                    </button>
-                  )}
                 </div>
-
-                {/* Table Legend */}
-                <div className="px-5 py-2.5 bg-slate-950/60 border-b border-slate-800/80 flex flex-wrap items-center justify-between text-xs gap-3">
-                  <div className="flex items-center space-x-4">
-                    <div className="flex items-center space-x-1.5">
-                      <span className="w-3 h-3 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500/50"></span>
-                      <span className="text-slate-300 font-medium">Top 4 (Leaders / Promotion)</span>
-                    </div>
-                    <div className="flex items-center space-x-1.5">
-                      <span className="w-3 h-3 rounded-full bg-rose-500 shadow-sm shadow-rose-500/50"></span>
-                      <span className="text-slate-300 font-medium">Bottom 2 (Relegation Zone)</span>
-                    </div>
-                  </div>
-                  <span className="text-slate-500 italic">P = Played, W = Won, D = Drawn, L = Lost, GD = Goal Diff, PTS = Points</span>
-                </div>
-
-                {/* Main Table */}
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-sm text-slate-300">
-                    <thead className="bg-slate-950/80 text-xs text-slate-400 uppercase font-semibold border-b border-slate-800">
+                    <thead className="bg-slate-950/80 text-xs text-slate-400 uppercase border-b border-slate-800">
                       <tr>
-                        <th className="py-3.5 px-4 text-center">POS</th>
-                        <th className="py-3.5 px-4">TEAM</th>
-                        <th className="py-3.5 px-3 text-center">P</th>
-                        <th className="py-3.5 px-3 text-center">W</th>
-                        <th className="py-3.5 px-3 text-center">D</th>
-                        <th className="py-3.5 px-3 text-center">L</th>
-                        <th className="py-3.5 px-3 text-center">GF</th>
-                        <th className="py-3.5 px-3 text-center">GA</th>
-                        <th className="py-3.5 px-3 text-center">GD</th>
-                        <th className="py-3.5 px-4 text-center font-bold text-amber-400">PTS</th>
+                        <th className="py-3 px-4 text-center">POS</th>
+                        <th className="py-3 px-4">TEAM</th>
+                        <th className="py-3 px-3 text-center">P</th>
+                        <th className="py-3 px-3 text-center">W</th>
+                        <th className="py-3 px-3 text-center">D</th>
+                        <th className="py-3 px-3 text-center">L</th>
+                        <th className="py-3 px-3 text-center">GD</th>
+                        <th className="py-3 px-4 text-center text-amber-400">PTS</th>
+                        {isAdmin && <th className="py-3 px-4 text-center text-rose-400">ADMIN</th>}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-800/60">
-                      {sortedTeams.map((team, idx) => {
-                        const rank = idx + 1;
-                        const isLeader = rank <= 4;
-                        const isRelegation = rank > sortedTeams.length - 2;
-
-                        return (
-                          <tr
-                            key={team.id}
-                            className={`transition hover:bg-slate-800/40 ${
-                              isLeader
-                                ? 'bg-emerald-950/20'
-                                : isRelegation
-                                ? 'bg-rose-950/20'
-                                : ''
-                            }`}
-                          >
-                            {/* Position Number */}
-                            <td className="py-3 px-4 text-center font-bold">
-                              <span
-                                className={`inline-flex items-center justify-center w-7 h-7 rounded-lg text-xs ${
-                                  isLeader
-                                    ? 'bg-emerald-600 text-white font-extrabold shadow-md'
-                                    : isRelegation
-                                    ? 'bg-rose-600 text-white font-extrabold shadow-md'
-                                    : 'text-slate-400 bg-slate-800'
-                                }`}
-                              >
-                                {rank}
-                              </span>
+                      {sortedTeams.map((team, idx) => (
+                        <tr key={team.id} className="transition hover:bg-slate-800/40">
+                          <td className="py-3 px-4 text-center font-bold">{idx + 1}</td>
+                          <td className="py-3 px-4 font-semibold text-white flex items-center space-x-3">
+                            <MediaRenderer url={team.logo} className="w-8 h-8 rounded-full border border-slate-700" />
+                            <div>
+                              <p>{team.name}</p>
+                              <p className="text-xs text-slate-500 font-normal">{team.town}</p>
+                            </div>
+                          </td>
+                          <td className="py-3 px-3 text-center">{team.played}</td>
+                          <td className="py-3 px-3 text-center text-emerald-400">{team.won}</td>
+                          <td className="py-3 px-3 text-center text-slate-400">{team.drawn}</td>
+                          <td className="py-3 px-3 text-center text-rose-400">{team.lost}</td>
+                          <td className="py-3 px-3 text-center font-semibold">{team.gf - team.ga}</td>
+                          <td className="py-3 px-4 text-center font-black text-amber-400 text-base">{team.points}</td>
+                          {isAdmin && (
+                            <td className="py-3 px-4 text-center flex justify-center space-x-2">
+                              <button onClick={() => openTeamModal(team)} className="text-emerald-400 hover:text-emerald-300 p-1"><Edit3 className="w-4 h-4"/></button>
+                              <button onClick={() => handleDeleteTeam(team.id)} className="text-rose-400 hover:text-rose-300 p-1"><Trash2 className="w-4 h-4"/></button>
                             </td>
-
-                            {/* Team Details */}
-                            <td className="py-3 px-4 font-semibold text-white">
-                              <div className="flex items-center space-x-3">
-                                <img
-                                  src={team.logo}
-                                  alt={team.name}
-                                  className="w-8 h-8 rounded-full object-cover border border-slate-700"
-                                />
-                                <div>
-                                  <div className="flex items-center space-x-2">
-                                    <span className="font-bold">{team.name}</span>
-                                    {isLeader && (
-                                      <span className="bg-emerald-500/20 text-emerald-400 text-[10px] px-2 py-0.5 rounded border border-emerald-500/30 font-bold uppercase">
-                                        Leader
-                                      </span>
-                                    )}
-                                    {isRelegation && (
-                                      <span className="bg-rose-500/20 text-rose-400 text-[10px] px-2 py-0.5 rounded border border-rose-500/30 font-bold uppercase">
-                                        Relegation
-                                      </span>
-                                    )}
-                                  </div>
-                                  <span className="text-xs text-slate-500 font-normal">{team.town}</span>
-                                </div>
-                              </div>
-                            </td>
-
-                            {/* Stats Columns */}
-                            <td className="py-3 px-3 text-center">{team.played}</td>
-                            <td className="py-3 px-3 text-center text-emerald-400 font-medium">{team.won}</td>
-                            <td className="py-3 px-3 text-center text-slate-400">{team.drawn}</td>
-                            <td className="py-3 px-3 text-center text-rose-400">{team.lost}</td>
-                            <td className="py-3 px-3 text-center text-slate-400">{team.gf}</td>
-                            <td className="py-3 px-3 text-center text-slate-400">{team.ga}</td>
-                            <td className={`py-3 px-3 text-center font-semibold ${team.gf - team.ga > 0 ? 'text-emerald-400' : team.gf - team.ga < 0 ? 'text-rose-400' : 'text-slate-400'}`}>
-                              {team.gf - team.ga > 0 ? `+${team.gf - team.ga}` : team.gf - team.ga}
-                            </td>
-                            <td className="py-3 px-4 text-center font-black text-amber-400 text-base bg-amber-500/5">
-                              {team.points}
-                            </td>
-                          </tr>
-                        );
-                      })}
+                          )}
+                        </tr>
+                      ))}
                     </tbody>
                   </table>
                 </div>
               </div>
             )}
 
-            {/* --- SECTION 2: MATCHES & FIXTURES --- */}
-            {(activeSection === 'matches' || activeSection === 'fixtures') && (
-              <div className="bg-slate-900 rounded-2xl border border-slate-800 shadow-2xl p-6 space-y-6">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
-                  <div>
-                    <h3 className="text-xl font-extrabold text-white flex items-center space-x-2">
-                      <Flame className="w-5 h-5 text-amber-400" />
-                      <span>Fixtures & Match Results</span>
-                    </h3>
-                    <p className="text-xs text-slate-400 mt-1">
-                      Upcoming matches and recent matchday scores across Kirinyaga South.
-                    </p>
-                  </div>
-
-                  {isAdmin && (
-                    <button
-                      onClick={() => setShowAddFixtureModal(true)}
-                      className="bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold px-4 py-2.5 rounded-xl transition flex items-center space-x-1.5"
-                    >
-                      <Plus className="w-4 h-4" />
-                      <span>Create Fixture</span>
-                    </button>
-                  )}
-                </div>
-
-                {/* Matches Grid */}
+            {/* MATCHES */}
+            {activeSection === 'matches' && (
+              <div className="bg-slate-900 rounded-2xl border border-slate-800 shadow-2xl p-6">
+                <h3 className="text-xl font-extrabold text-white flex items-center space-x-2 border-b border-slate-800 pb-4 mb-4">
+                  <Flame className="w-5 h-5 text-amber-400" /><span>Matches & Results</span>
+                </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {matches.map((match) => {
                     const homeTeam = teams.find((t) => t.id === match.homeTeamId);
                     const awayTeam = teams.find((t) => t.id === match.awayTeamId);
-
                     return (
-                      <div
-                        key={match.id}
-                        className="bg-slate-950 rounded-xl p-4 border border-slate-800 hover:border-slate-700 transition space-y-3 relative overflow-hidden"
-                      >
-                        <div className="flex items-center justify-between text-xs text-slate-400">
-                          <span className="font-semibold text-emerald-400 bg-emerald-950/60 px-2.5 py-1 rounded-md border border-emerald-800/40">
-                            Gameweek {match.gameweek}
-                          </span>
-                          <span className="flex items-center space-x-1">
-                            <Calendar className="w-3.5 h-3.5 text-slate-500" />
-                            <span>{match.date}</span>
-                          </span>
-                        </div>
-
-                        {/* Match Display */}
-                        <div className="flex items-center justify-between py-2">
-                          {/* Home */}
-                          <div className="flex-1 text-center font-bold text-sm text-slate-100 space-y-1">
-                            <div className="w-10 h-10 mx-auto rounded-full bg-slate-800 border border-slate-700 overflow-hidden">
-                              <img src={homeTeam?.logo} alt="" className="w-full h-full object-cover" />
-                            </div>
-                            <p className="truncate">{homeTeam?.name || 'Home Team'}</p>
+                      <div key={match.id} className="bg-slate-950 rounded-xl p-4 border border-slate-800 space-y-3 relative">
+                        {isAdmin && (
+                          <div className="absolute top-2 right-2 flex space-x-1">
+                            <button onClick={() => openFixtureModal(match)} className="text-amber-400 p-1"><Edit3 className="w-3.5 h-3.5"/></button>
+                            <button onClick={() => handleDeleteFixture(match.id)} className="text-rose-400 p-1"><Trash2 className="w-3.5 h-3.5"/></button>
                           </div>
-
-                          {/* Score or VS */}
+                        )}
+                        <div className="text-xs text-slate-400 font-semibold bg-emerald-950/60 inline-block px-2 py-1 rounded text-emerald-400">GW {match.gameweek} • {match.date}</div>
+                        <div className="flex items-center justify-between">
+                          <div className="text-center flex-1">
+                            <MediaRenderer url={homeTeam?.logo || ''} className="w-10 h-10 mx-auto rounded-full" />
+                            <p className="text-sm font-bold mt-1">{homeTeam?.name || 'TBD'}</p>
+                          </div>
                           <div className="px-4 text-center">
                             {match.status === 'Completed' ? (
-                              <div className="bg-slate-900 border border-slate-700 px-3 py-1.5 rounded-lg text-lg font-black text-amber-400 tracking-wider">
-                                {match.homeScore} - {match.awayScore}
-                              </div>
+                              <div className="bg-slate-900 border border-slate-700 px-3 py-1 rounded text-lg font-black text-amber-400">{match.homeScore} - {match.awayScore}</div>
                             ) : (
-                              <div className="bg-slate-800/80 px-3 py-1 rounded text-xs font-black text-slate-400 uppercase tracking-widest">
-                                VS
-                              </div>
+                              <div className="text-slate-500 font-bold">VS</div>
                             )}
-                            <span className="text-[10px] text-slate-500 block mt-1">
-                              {match.status}
-                            </span>
                           </div>
-
-                          {/* Away */}
-                          <div className="flex-1 text-center font-bold text-sm text-slate-100 space-y-1">
-                            <div className="w-10 h-10 mx-auto rounded-full bg-slate-800 border border-slate-700 overflow-hidden">
-                              <img src={awayTeam?.logo} alt="" className="w-full h-full object-cover" />
-                            </div>
-                            <p className="truncate">{awayTeam?.name || 'Away Team'}</p>
+                          <div className="text-center flex-1">
+                            <MediaRenderer url={awayTeam?.logo || ''} className="w-10 h-10 mx-auto rounded-full" />
+                            <p className="text-sm font-bold mt-1">{awayTeam?.name || 'TBD'}</p>
                           </div>
                         </div>
-
-                        <div className="pt-2 border-t border-slate-900 flex items-center justify-between text-xs text-slate-500">
-                          <span className="truncate flex items-center space-x-1">
-                            <MapPin className="w-3 h-3 text-slate-500" />
-                            <span>Venue: {match.venue}</span>
-                          </span>
-
+                        <div className="text-xs text-slate-500 pt-2 border-t border-slate-800 flex justify-between items-center">
+                          <span>{match.venue}</span>
                           {isAdmin && (
-                            <button
-                              onClick={() => {
-                                setEditingMatch(match);
-                                setMatchScore({ home: match.homeScore || 0, away: match.awayScore || 0 });
-                              }}
-                              className="text-emerald-400 hover:text-emerald-300 font-bold flex items-center space-x-1 text-xs"
-                            >
-                              <Edit3 className="w-3 h-3" />
-                              <span>{match.status === 'Completed' ? 'Edit Score' : 'Update Result'}</span>
+                            <button onClick={() => { setEditingMatch(match); setMatchScore({ home: match.homeScore || 0, away: match.awayScore || 0 }); }} className="text-emerald-400 font-bold">
+                              Update Score
                             </button>
                           )}
                         </div>
@@ -891,423 +611,255 @@ export default function KirinyagaSouthSuperLeague() {
               </div>
             )}
 
-            {/* --- SECTION 3: STATS --- */}
+            {/* STATS & PLAYERS */}
             {activeSection === 'stats' && (
               <div className="bg-slate-900 rounded-2xl border border-slate-800 shadow-2xl p-6 space-y-6">
-                <div className="border-b border-slate-800 pb-4">
-                  <h3 className="text-xl font-extrabold text-white flex items-center space-x-2">
-                    <BarChart3 className="w-5 h-5 text-indigo-400" />
-                    <span>League Analytics & Stats</span>
-                  </h3>
-                  <p className="text-xs text-slate-400 mt-1">Current season summary metrics across Kirinyaga South Super League.</p>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div className="bg-slate-950 p-5 rounded-xl border border-slate-800 text-center">
-                    <Trophy className="w-8 h-8 text-amber-400 mx-auto mb-2" />
-                    <p className="text-2xl font-black text-white">{sortedTeams[0]?.name}</p>
-                    <p className="text-xs text-slate-400 mt-1 uppercase tracking-wider font-bold">Current League Leader</p>
-                  </div>
-
-                  <div className="bg-slate-950 p-5 rounded-xl border border-slate-800 text-center">
-                    <Flame className="w-8 h-8 text-rose-500 mx-auto mb-2" />
-                    <p className="text-2xl font-black text-white">
-                      {teams.reduce((acc, t) => acc + t.gf, 0)} Goals
-                    </p>
-                    <p className="text-xs text-slate-400 mt-1 uppercase tracking-wider font-bold">Total Goals Scored</p>
-                  </div>
-
-                  <div className="bg-slate-950 p-5 rounded-xl border border-slate-800 text-center">
-                    <Shield className="w-8 h-8 text-emerald-400 mx-auto mb-2" />
-                    <p className="text-2xl font-black text-white">{teams.length} Teams</p>
-                    <p className="text-xs text-slate-400 mt-1 uppercase tracking-wider font-bold">Registered Clubs</p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* --- SECTION 4: ABOUT LEAGUE --- */}
-            {activeSection === 'about' && (
-              <div className="bg-slate-900 rounded-2xl border border-slate-800 shadow-2xl p-6 space-y-6">
-                <div className="flex items-center justify-between border-b border-slate-800 pb-4">
-                  <div className="flex items-center space-x-2">
-                    <Info className="w-6 h-6 text-blue-400" />
-                    <h3 className="text-xl font-extrabold text-white">About The League</h3>
-                  </div>
-                  {isAdmin && (
-                    <button
-                      onClick={() => setEditingInfo(true)}
-                      className="text-xs font-bold text-emerald-400 hover:underline flex items-center space-x-1"
-                    >
-                      <Edit3 className="w-3.5 h-3.5" />
-                      <span>Edit Content</span>
-                    </button>
-                  )}
-                </div>
-
-                <p className="text-slate-300 leading-relaxed text-sm">{leagueInfo.about}</p>
-              </div>
-            )}
-
-            {/* --- SECTION 5: LOCATION --- */}
-            {activeSection === 'location' && (
-              <div className="bg-slate-900 rounded-2xl border border-slate-800 shadow-2xl p-6 space-y-6">
-                <div className="flex items-center justify-between border-b border-slate-800 pb-4">
-                  <div className="flex items-center space-x-2">
-                    <MapPin className="w-6 h-6 text-rose-400" />
-                    <h3 className="text-xl font-extrabold text-white">League Headquarters & Stadiums</h3>
-                  </div>
-                </div>
-
-                <div className="bg-slate-950 p-5 rounded-xl border border-slate-800 space-y-3">
-                  <p className="text-slate-200 text-sm font-semibold">{leagueInfo.location}</p>
-                  <p className="text-xs text-slate-400">
-                    Matches are hosted across municipal stadiums in Kerugoya, Sagana, Wang'uru, Mwea, Makutano, and Kutus.
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* --- SECTION 6: CONTACTS --- */}
-            {activeSection === 'contacts' && (
-              <div className="bg-slate-900 rounded-2xl border border-slate-800 shadow-2xl p-6 space-y-6">
-                <div className="flex items-center justify-between border-b border-slate-800 pb-4">
-                  <div className="flex items-center space-x-2">
-                    <Phone className="w-6 h-6 text-emerald-400" />
-                    <h3 className="text-xl font-extrabold text-white">Contact Management</h3>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 flex items-center space-x-3">
-                    <Phone className="w-5 h-5 text-emerald-400" />
-                    <div>
-                      <p className="text-xs text-slate-500 uppercase font-bold">Official Hotline</p>
-                      <p className="text-sm font-semibold text-slate-200">{leagueInfo.phone}</p>
+                <h3 className="text-xl font-extrabold text-white flex items-center space-x-2 border-b border-slate-800 pb-4">
+                  <Star className="w-5 h-5 text-amber-400" /><span>Awards & Highlights</span>
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Player of the Day */}
+                  <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 text-center relative overflow-hidden group">
+                    <h4 className="text-emerald-400 font-black uppercase tracking-wider mb-3">Player of the Day</h4>
+                    <div className="relative w-full h-48 rounded-lg overflow-hidden mb-3 border border-slate-800 bg-slate-900 flex justify-center items-center">
+                       <MediaRenderer url={potd.mediaUrl} className="w-full h-full object-contain" />
                     </div>
+                    <p className="text-xl font-bold text-white">{potd.name}</p>
+                    <p className="text-sm text-slate-400">{potd.team}</p>
+                    {isAdmin && (
+                      <button onClick={() => { setEditingPlayerType('potd'); setPlayerForm({ name: potd.name, context: potd.team, mediaUrl: potd.mediaUrl }); setShowEditPlayerModal(true); }} className="absolute top-2 right-2 bg-slate-800 p-2 rounded-lg text-emerald-400">
+                        <Edit3 className="w-4 h-4"/>
+                      </button>
+                    )}
                   </div>
-
-                  <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 flex items-center space-x-3">
-                    <Mail className="w-5 h-5 text-teal-400" />
-                    <div>
-                      <p className="text-xs text-slate-500 uppercase font-bold">Email Address</p>
-                      <p className="text-sm font-semibold text-slate-200">{leagueInfo.email}</p>
+                  {/* Player of the Match */}
+                  <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 text-center relative overflow-hidden group">
+                    <h4 className="text-amber-400 font-black uppercase tracking-wider mb-3">Player of the Match</h4>
+                    <div className="relative w-full h-48 rounded-lg overflow-hidden mb-3 border border-slate-800 bg-slate-900 flex justify-center items-center">
+                       <MediaRenderer url={potm.mediaUrl} className="w-full h-full object-contain" />
                     </div>
+                    <p className="text-xl font-bold text-white">{potm.name}</p>
+                    <p className="text-sm text-slate-400">{potm.match}</p>
+                    {isAdmin && (
+                      <button onClick={() => { setEditingPlayerType('potm'); setPlayerForm({ name: potm.name, context: potm.match, mediaUrl: potm.mediaUrl }); setShowEditPlayerModal(true); }} className="absolute top-2 right-2 bg-slate-800 p-2 rounded-lg text-amber-400">
+                        <Edit3 className="w-4 h-4"/>
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
             )}
 
+            {/* MESSAGES */}
+            {activeSection === 'messages' && (
+              <div className="bg-slate-900 rounded-2xl border border-slate-800 shadow-2xl p-6">
+                <h3 className="text-xl font-extrabold text-white flex items-center space-x-2 border-b border-slate-800 pb-4 mb-4">
+                  <MessageSquare className="w-5 h-5 text-blue-400" /><span>Public Q&A / Messages</span>
+                </h3>
+                <form onSubmit={handlePostMessage} className="bg-slate-950 p-4 rounded-xl border border-slate-800 mb-6 space-y-3">
+                  <input type="text" placeholder="Your Name" required value={newMessage.sender} onChange={e => setNewMessage({...newMessage, sender: e.target.value})} className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white" />
+                  <textarea placeholder="Ask a question or leave a message about the league..." required value={newMessage.text} onChange={e => setNewMessage({...newMessage, text: e.target.value})} className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white h-24" />
+                  <button type="submit" className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded-lg text-sm w-full">Post Message</button>
+                </form>
+                <div className="space-y-3">
+                  {messages.length === 0 ? <p className="text-slate-500 text-sm italic">No messages yet. Be the first to ask!</p> : messages.map(msg => (
+                    <div key={msg.id} className="bg-slate-800/50 p-4 rounded-xl border border-slate-800 relative">
+                      {isAdmin && <button onClick={() => deleteMessage(msg.id)} className="absolute top-3 right-3 text-rose-500"><Trash2 className="w-4 h-4"/></button>}
+                      <p className="font-bold text-emerald-400 text-sm mb-1">{msg.sender} <span className="text-slate-500 text-xs font-normal ml-2">{msg.timestamp}</span></p>
+                      <p className="text-slate-300 text-sm">{msg.text}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* TEAM COMMENTS */}
+            {activeSection === 'comments' && (
+              <div className="bg-slate-900 rounded-2xl border border-slate-800 shadow-2xl p-6">
+                <h3 className="text-xl font-extrabold text-white flex items-center space-x-2 border-b border-slate-800 pb-4 mb-4">
+                  <Users className="w-5 h-5 text-rose-400" /><span>Team Performance Comments</span>
+                </h3>
+                <form onSubmit={handlePostComment} className="bg-slate-950 p-4 rounded-xl border border-slate-800 mb-6 space-y-3">
+                  <select required value={newComment.teamName} onChange={e => setNewComment({...newComment, teamName: e.target.value})} className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white">
+                    <option value="">Select a team to comment on...</option>
+                    {teams.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
+                  </select>
+                  <textarea placeholder="Share your thoughts on their recent performance..." required value={newComment.comment} onChange={e => setNewComment({...newComment, comment: e.target.value})} className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white h-24" />
+                  <button type="submit" className="bg-rose-600 hover:bg-rose-500 text-white font-bold py-2 px-4 rounded-lg text-sm w-full">Post Comment</button>
+                </form>
+                <div className="space-y-3">
+                  {teamComments.length === 0 ? <p className="text-slate-500 text-sm italic">No comments yet. Support your favorite team!</p> : teamComments.map(c => (
+                    <div key={c.id} className="bg-slate-800/50 p-4 rounded-xl border border-slate-800 relative">
+                      {isAdmin && <button onClick={() => deleteComment(c.id)} className="absolute top-3 right-3 text-rose-500"><Trash2 className="w-4 h-4"/></button>}
+                      <p className="font-bold text-amber-400 text-sm mb-1">Regarding: {c.teamName} <span className="text-slate-500 text-xs font-normal ml-2">{c.timestamp}</span></p>
+                      <p className="text-slate-300 text-sm">{c.comment}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* ABOUT, LOCATION, CONTACTS */}
+            {(activeSection === 'about' || activeSection === 'location' || activeSection === 'contacts') && (
+              <div className="bg-slate-900 rounded-2xl border border-slate-800 shadow-2xl p-6 relative">
+                {isAdmin && !editingInfo && (
+                  <button onClick={() => setEditingInfo(true)} className="absolute top-6 right-6 text-emerald-400 text-sm font-bold flex items-center space-x-1"><Edit3 className="w-4 h-4"/><span>Edit Details</span></button>
+                )}
+                <h3 className="text-xl font-extrabold text-white flex items-center space-x-2 border-b border-slate-800 pb-4 mb-4 capitalize">
+                  <Info className="w-5 h-5 text-blue-400" /><span>League {activeSection}</span>
+                </h3>
+                
+                {editingInfo ? (
+                  <form onSubmit={(e) => { e.preventDefault(); setLeagueInfo(tempInfo); setEditingInfo(false); }} className="space-y-4">
+                    {Object.keys(tempInfo).map((key) => (
+                      <div key={key}>
+                        <label className="block text-xs uppercase text-slate-400 mb-1">{key}</label>
+                        <textarea value={(tempInfo as any)[key]} onChange={(e) => setTempInfo({...tempInfo, [key]: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-sm text-white" />
+                      </div>
+                    ))}
+                    <button type="submit" className="w-full bg-emerald-600 text-white font-bold py-3 rounded-xl">Save Information</button>
+                  </form>
+                ) : (
+                  <div className="space-y-4 text-slate-300 text-sm leading-relaxed">
+                    {activeSection === 'about' && <p>{leagueInfo.about}</p>}
+                    {activeSection === 'location' && (
+                      <div className="bg-slate-950 p-5 rounded-xl border border-slate-800">
+                        <p className="font-bold text-emerald-400 mb-2">Venues & Regions</p>
+                        <p>{leagueInfo.location}</p>
+                        <p className="mt-2 text-slate-400">{leagueInfo.address}</p>
+                      </div>
+                    )}
+                    {activeSection === 'contacts' && (
+                      <div className="bg-slate-950 p-5 rounded-xl border border-slate-800 space-y-3">
+                        <p className="flex items-center space-x-3"><Phone className="w-5 h-5 text-emerald-400"/><span>{leagueInfo.phone}</span></p>
+                        <p className="flex items-center space-x-3"><Mail className="w-5 h-5 text-teal-400"/><span>{leagueInfo.email}</span></p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </main>
         </div>
       </div>
 
-      {/* --- FOOTER --- */}
-      <footer className="bg-slate-950 border-t border-slate-800 mt-16 pt-12 pb-8 text-slate-400 text-xs">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-3 gap-8 pb-8 border-b border-slate-800/80">
-          {/* About Column */}
-          <div className="space-y-3">
-            <div className="flex items-center space-x-2">
-              <Trophy className="w-5 h-5 text-amber-400" />
-              <span className="font-bold text-sm text-white uppercase">Kirinyaga South Super League</span>
-            </div>
-            <p className="text-slate-400 leading-relaxed">
-              {leagueInfo.about}
-            </p>
-          </div>
-
-          {/* Location Column */}
-          <div className="space-y-3">
-            <h4 className="font-bold text-sm text-white uppercase flex items-center space-x-2">
-              <MapPin className="w-4 h-4 text-rose-400" />
-              <span>Location & Venues</span>
-            </h4>
-            <p className="text-slate-400">{leagueInfo.location}</p>
-            <p className="text-slate-500">{leagueInfo.address}</p>
-          </div>
-
-          {/* Contacts Column */}
-          <div className="space-y-3">
-            <h4 className="font-bold text-sm text-white uppercase flex items-center space-x-2">
-              <Phone className="w-4 h-4 text-emerald-400" />
-              <span>League Secretariat Contacts</span>
-            </h4>
-            <p className="flex items-center space-x-2">
-              <Phone className="w-3.5 h-3.5 text-slate-500" />
-              <span>{leagueInfo.phone}</span>
-            </p>
-            <p className="flex items-center space-x-2">
-              <Mail className="w-3.5 h-3.5 text-slate-500" />
-              <span>{leagueInfo.email}</span>
-            </p>
-          </div>
-        </div>
-
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p>© {new Date().getFullYear()} Kirinyaga South Super League. All Rights Reserved.</p>
-          <div className="flex items-center space-x-4 text-slate-500">
-            <span className="hover:text-slate-300 cursor-pointer">Terms & Conditions</span>
-            <span>•</span>
-            <span className="hover:text-slate-300 cursor-pointer">Privacy Policy</span>
-          </div>
-        </div>
-      </footer>
-
-      {/* --- MODALS (ADMIN LOGIN, ADD TEAM, ADD FIXTURE, UPDATE SCORE) --- */}
-
-      {/* 1. ADMIN LOGIN MODAL */}
+      {/* --- ADMIN LOGIN MODAL --- */}
       {showAdminModal && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-6 shadow-2xl relative">
-            <button
-              onClick={() => setShowAdminModal(false)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-white"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
-            <div className="flex items-center space-x-3 mb-4">
-              <div className="p-3 bg-amber-500/10 rounded-xl border border-amber-500/20">
-                <Lock className="w-6 h-6 text-amber-400" />
-              </div>
-              <div>
-                <h3 className="text-lg font-bold text-white">Admin Authentication</h3>
-                <p className="text-xs text-slate-400">Enter passcode to manage league data</p>
-              </div>
-            </div>
-
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-6 relative">
+            <button onClick={() => setShowAdminModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-white"><X className="w-5 h-5" /></button>
+            <h3 className="text-lg font-bold text-white flex items-center mb-4"><Lock className="w-5 h-5 text-amber-400 mr-2"/> Authorized Login</h3>
             <form onSubmit={handleAdminLogin} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-300 uppercase mb-1">Passcode</label>
-                <input
-                  type="password"
-                  placeholder="Enter admin passcode (e.g. admin123)"
-                  value={adminPassword}
-                  onChange={(e) => setAdminPassword(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500"
-                />
-                {adminError && <p className="text-rose-500 text-xs mt-1">{adminError}</p>}
+                <label className="block text-xs font-semibold text-slate-300 mb-1">Email Address</label>
+                <input type="email" required value={adminEmail} onChange={(e) => setAdminEmail(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white" />
               </div>
-
-              <div className="bg-slate-950 p-3 rounded-lg text-xs text-slate-400 border border-slate-800">
-                <p className="font-semibold text-amber-400 mb-0.5">Demo Passcode:</p>
-                <code className="text-slate-200">admin123</code>
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">Passcode</label>
+                <input type="password" required value={adminPassword} onChange={(e) => setAdminPassword(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white" />
               </div>
-
-              <button
-                type="submit"
-                className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm py-3 rounded-xl transition shadow-lg shadow-emerald-900/30"
-              >
-                Authenticate & Unlock
-              </button>
+              {adminError && <p className="text-rose-500 text-xs font-bold">{adminError}</p>}
+              <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl">Unlock System</button>
             </form>
           </div>
         </div>
       )}
 
-      {/* 2. ADD TEAM MODAL */}
-      {showAddTeamModal && (
+      {/* --- TEAM MODAL (ADD / EDIT) --- */}
+      {showTeamModal && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-6 shadow-2xl relative">
-            <button
-              onClick={() => setShowAddTeamModal(false)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-white"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
-            <h3 className="text-lg font-bold text-white mb-4 flex items-center space-x-2">
-              <Plus className="w-5 h-5 text-emerald-400" />
-              <span>Register New Team</span>
-            </h3>
-
-            <form onSubmit={handleAddTeam} className="space-y-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-6 relative max-h-[90vh] overflow-y-auto">
+            <button onClick={() => setShowTeamModal(false)} className="absolute top-4 right-4 text-slate-400"><X className="w-5 h-5" /></button>
+            <h3 className="text-lg font-bold text-white mb-4">{editingTeam ? 'Edit Team Details' : 'Register New Team'}</h3>
+            <form onSubmit={handleSaveTeam} className="space-y-4">
+              <input type="text" placeholder="Team Name" required value={teamForm.name} onChange={e => setTeamForm({...teamForm, name: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-white" />
+              <input type="text" placeholder="Location/Town" required value={teamForm.town} onChange={e => setTeamForm({...teamForm, town: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-white" />
               <div>
-                <label className="block text-xs font-semibold text-slate-300 uppercase mb-1">Team Name</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Wang'uru Heroes FC"
-                  value={newTeam.name}
-                  onChange={(e) => setNewTeam({ ...newTeam, name: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500"
-                />
+                <label className="block text-xs text-slate-400 mb-1 flex items-center"><Video className="w-3 h-3 mr-1"/> Media URL (Image or .mp4)</label>
+                <input type="url" placeholder="https://... image or video" value={teamForm.logo} onChange={e => setTeamForm({...teamForm, logo: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-white" />
               </div>
+              
+              {/* Optional Admin Stat Edit Overrides */}
+              {editingTeam && (
+                <div className="grid grid-cols-3 gap-2 border-t border-slate-800 pt-4 mt-2">
+                  <div className="col-span-3 text-xs text-amber-400 font-bold mb-1">Manual Override Stats</div>
+                  {['played', 'won', 'drawn', 'lost', 'gf', 'ga', 'points'].map((stat) => (
+                    <div key={stat}>
+                      <label className="block text-[10px] uppercase text-slate-500">{stat}</label>
+                      <input type="number" value={(teamForm as any)[stat]} onChange={e => setTeamForm({...teamForm, [stat]: Number(e.target.value)})} className="w-full bg-slate-950 border border-slate-800 rounded p-1.5 text-sm text-white" />
+                    </div>
+                  ))}
+                </div>
+              )}
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 uppercase mb-1">Home Town / Sub-County</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Sagana"
-                  value={newTeam.town}
-                  onChange={(e) => setNewTeam({ ...newTeam, town: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 uppercase mb-1">Logo Image URL (Optional)</label>
-                <input
-                  type="url"
-                  placeholder="https://..."
-                  value={newTeam.logo}
-                  onChange={(e) => setNewTeam({ ...newTeam, logo: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500"
-                />
-              </div>
-
-              <button
-                type="submit"
-                className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm py-3 rounded-xl transition"
-              >
-                Register Team
-              </button>
+              <button type="submit" className="w-full bg-emerald-600 text-white font-bold py-3 rounded-xl mt-4">Save Team</button>
             </form>
           </div>
         </div>
       )}
 
-      {/* 3. EDIT MATCH RESULT MODAL */}
+      {/* --- FIXTURE MODAL (ADD / EDIT) --- */}
+      {showFixtureModal && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-6 relative">
+            <button onClick={() => setShowFixtureModal(false)} className="absolute top-4 right-4 text-slate-400"><X className="w-5 h-5" /></button>
+            <h3 className="text-lg font-bold text-white mb-4">{editingFixture ? 'Edit Fixture Details' : 'Add New Fixture'}</h3>
+            <form onSubmit={handleSaveFixture} className="space-y-4">
+              <select required value={fixtureForm.homeTeamId} onChange={e => setFixtureForm({...fixtureForm, homeTeamId: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-white">
+                <option value="">Select Home Team</option>
+                {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+              </select>
+              <select required value={fixtureForm.awayTeamId} onChange={e => setFixtureForm({...fixtureForm, awayTeamId: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-white">
+                <option value="">Select Away Team</option>
+                {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+              </select>
+              <input type="number" placeholder="Gameweek" value={fixtureForm.gameweek} onChange={e => setFixtureForm({...fixtureForm, gameweek: Number(e.target.value)})} className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-white" />
+              <input type="text" placeholder="Date (e.g. 2026-09-20 15:00)" value={fixtureForm.date} onChange={e => setFixtureForm({...fixtureForm, date: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-white" />
+              <input type="text" placeholder="Venue" value={fixtureForm.venue} onChange={e => setFixtureForm({...fixtureForm, venue: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-white" />
+              <button type="submit" className="w-full bg-emerald-600 text-white font-bold py-3 rounded-xl mt-4">Save Fixture</button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* --- EDIT MATCH SCORE MODAL --- */}
       {editingMatch && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-6 shadow-2xl relative">
-            <button
-              onClick={() => setEditingMatch(null)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-white"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
-            <h3 className="text-lg font-bold text-white mb-4">Update Match Result</h3>
-
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-sm p-6 relative text-center">
+            <button onClick={() => setEditingMatch(null)} className="absolute top-4 right-4 text-slate-400"><X className="w-5 h-5" /></button>
+            <h3 className="text-lg font-bold text-white mb-4">Update Final Score</h3>
             <form onSubmit={handleUpdateScore} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-400 truncate mb-1">
-                    {teams.find((t) => t.id === editingMatch.homeTeamId)?.name}
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={matchScore.home}
-                    onChange={(e) => setMatchScore({ ...matchScore, home: parseInt(e.target.value) || 0 })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-center text-xl font-bold text-white"
-                  />
+              <div className="flex justify-between items-center gap-4">
+                <div className="flex-1">
+                  <label className="text-xs text-slate-400 block mb-1 truncate">{teams.find(t=>t.id===editingMatch.homeTeamId)?.name}</label>
+                  <input type="number" min="0" value={matchScore.home} onChange={e=>setMatchScore({...matchScore, home: parseInt(e.target.value)||0})} className="w-full bg-slate-950 border border-slate-800 rounded p-3 text-xl text-center font-bold text-white"/>
                 </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-400 truncate mb-1">
-                    {teams.find((t) => t.id === editingMatch.awayTeamId)?.name}
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={matchScore.away}
-                    onChange={(e) => setMatchScore({ ...matchScore, away: parseInt(e.target.value) || 0 })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-center text-xl font-bold text-white"
-                  />
+                <span className="font-bold text-slate-600">VS</span>
+                <div className="flex-1">
+                  <label className="text-xs text-slate-400 block mb-1 truncate">{teams.find(t=>t.id===editingMatch.awayTeamId)?.name}</label>
+                  <input type="number" min="0" value={matchScore.away} onChange={e=>setMatchScore({...matchScore, away: parseInt(e.target.value)||0})} className="w-full bg-slate-950 border border-slate-800 rounded p-3 text-xl text-center font-bold text-white"/>
                 </div>
               </div>
-
-              <button
-                type="submit"
-                className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm py-3 rounded-xl transition"
-              >
-                Save Score & Update Standings
-              </button>
+              <button type="submit" className="w-full bg-amber-500 hover:bg-amber-400 text-slate-900 font-bold py-3 rounded-xl">Confirm Result</button>
             </form>
           </div>
         </div>
       )}
 
-      {/* 4. CREATE FIXTURE MODAL */}
-      {showAddFixtureModal && (
+      {/* --- EDIT PLAYER OF THE DAY / MATCH MODAL --- */}
+      {showEditPlayerModal && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-6 shadow-2xl relative">
-            <button
-              onClick={() => setShowAddFixtureModal(false)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-white"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
-            <h3 className="text-lg font-bold text-white mb-4">Add New Fixture</h3>
-
-            <form onSubmit={handleAddFixture} className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 uppercase mb-1">Home Team</label>
-                  <select
-                    required
-                    value={newFixture.homeTeamId}
-                    onChange={(e) => setNewFixture({ ...newFixture, homeTeamId: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white"
-                  >
-                    <option value="">Select Home</option>
-                    {teams.map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 uppercase mb-1">Away Team</label>
-                  <select
-                    required
-                    value={newFixture.awayTeamId}
-                    onChange={(e) => setNewFixture({ ...newFixture, awayTeamId: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white"
-                  >
-                    <option value="">Select Away</option>
-                    {teams.map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-6 relative">
+            <button onClick={() => setShowEditPlayerModal(false)} className="absolute top-4 right-4 text-slate-400"><X className="w-5 h-5" /></button>
+            <h3 className="text-lg font-bold text-white mb-4 capitalize">Update {editingPlayerType === 'potd' ? 'Player of the Day' : 'Player of the Match'}</h3>
+            <form onSubmit={handleSavePlayer} className="space-y-4">
+              <input type="text" placeholder="Player Name" required value={playerForm.name} onChange={e => setPlayerForm({...playerForm, name: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-white" />
+              <input type="text" placeholder={editingPlayerType === 'potd' ? "Team Name" : "Match Played"} required value={playerForm.context} onChange={e => setPlayerForm({...playerForm, context: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-white" />
               <div>
-                <label className="block text-xs font-semibold text-slate-300 uppercase mb-1">Gameweek</label>
-                <input
-                  type="number"
-                  value={newFixture.gameweek}
-                  onChange={(e) => setNewFixture({ ...newFixture, gameweek: parseInt(e.target.value) || 1 })}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white"
-                />
+                <label className="block text-xs text-slate-400 mb-1 flex items-center"><Video className="w-3 h-3 mr-1"/> Media URL (Image or .mp4)</label>
+                <input type="url" placeholder="https://..." value={playerForm.mediaUrl} onChange={e => setPlayerForm({...playerForm, mediaUrl: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-white" />
               </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 uppercase mb-1">Date & Time</label>
-                <input
-                  type="text"
-                  placeholder="e.g. 2026-09-20 15:00"
-                  value={newFixture.date}
-                  onChange={(e) => setNewFixture({ ...newFixture, date: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 uppercase mb-1">Venue</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Kerugoya Stadium"
-                  value={newFixture.venue}
-                  onChange={(e) => setNewFixture({ ...newFixture, venue: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white"
-                />
-              </div>
-
-              <button
-                type="submit"
-                className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm py-3 rounded-xl transition"
-              >
-                Schedule Match Fixture
-              </button>
+              <button type="submit" className="w-full bg-emerald-600 text-white font-bold py-3 rounded-xl mt-4">Save Player Highlight</button>
             </form>
           </div>
         </div>
