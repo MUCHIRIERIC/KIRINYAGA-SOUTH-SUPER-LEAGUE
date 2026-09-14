@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import {
   Trophy, Calendar, Shield, MapPin, Phone, Mail, Plus, Edit3, Lock, Unlock,
   ChevronRight, ChevronLeft, BarChart3, Info, X, Menu, Flame, MessageSquare,
-  Users, Star, Trash2, Video
+  Users, Star, Trash2, Video, UserCheck, Send, Image, Smile
 } from 'lucide-react';
 
 const BACKEND_URL = 'https://kirinyaga-south-super-league-6.onrender.com';
@@ -38,11 +38,19 @@ interface Match {
   _id?: string;
 }
 
+interface MessageReply {
+  id: string;
+  sender: string;
+  text: string;
+  timestamp: string;
+}
+
 interface UserMessage {
   id: string;
   sender: string;
   text: string;
   timestamp: string;
+  replies?: MessageReply[];
 }
 
 interface TeamComment {
@@ -52,8 +60,28 @@ interface TeamComment {
   timestamp: string;
 }
 
+interface ExecutiveOfficial {
+  role: 'Chairman' | 'Treasurer' | 'Secretary' | 'Match Comm';
+  name: string;
+  phone: string;
+  email: string;
+}
+
+interface TeamOfficial {
+  teamId: string;
+  officialName: string;
+  role: string;
+  phone: string;
+}
+
+interface HeroMedia {
+  id: string;
+  url: string;
+  title: string;
+}
+
 // --- HELPER COMPONENT FOR MEDIA (IMAGE/VIDEO) ---
-const MediaRenderer = ({ url, className }: { url: string, className: string }) => {
+const MediaRenderer = ({ url, className }: { url: string; className: string }) => {
   if (!url) return <div className={`bg-slate-800 ${className}`}></div>;
   const isVideo = url.match(/\.(mp4|webm|ogg)$/i) || url.includes('video');
   
@@ -82,12 +110,48 @@ export default function KirinyagaSouthSuperLeague() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
   const [currentSlide, setCurrentSlide] = useState<number>(0);
 
-  // Community Features
-  const [messages, setMessages] = useState<UserMessage[]>([]);
+  // Landing Page Media Tool
+  const [heroMediaList, setHeroMediaList] = useState<HeroMedia[]>([
+    { id: '1', url: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&q=80&w=1200', title: 'Kirinyaga South Super League Action' },
+    { id: '2', url: 'https://images.unsplash.com/photo-1579952363873-27f3bade9f55?auto=format&fit=crop&q=80&w=1200', title: 'Grassroots Championship' }
+  ]);
+  const [showHeroMediaModal, setShowHeroMediaModal] = useState<boolean>(false);
+  const [newHeroMediaUrl, setNewHeroMediaUrl] = useState<string>('');
+  const [newHeroMediaTitle, setNewHeroMediaTitle] = useState<string>('');
+
+  // Officials State
+  const [executiveOfficials, setExecutiveOfficials] = useState<ExecutiveOfficial[]>([
+    { role: 'Chairman', name: 'John Kariuki', phone: '+254 712 000 111', email: 'chairman@kirinyagaleague.co.ke' },
+    { role: 'Treasurer', name: 'Mary Wanjiku', phone: '+254 722 000 222', email: 'treasurer@kirinyagaleague.co.ke' },
+    { role: 'Secretary', name: 'David Njuguna', phone: '+254 733 000 333', email: 'secretary@kirinyagaleague.co.ke' },
+    { role: 'Match Comm', name: 'Peter Mwangi', phone: '+254 744 000 444', email: 'matchcomm@kirinyagaleague.co.ke' }
+  ]);
+  
+  const [teamOfficials, setTeamOfficials] = useState<{ [teamId: string]: TeamOfficial }>({});
+  const [editingOfficialTeamId, setEditingOfficialTeamId] = useState<string | null>(null);
+  const [officialForm, setOfficialForm] = useState({ officialName: '', role: 'Team Representative', phone: '' });
+
+  // Community Features & Public Messages
+  const [messages, setMessages] = useState<UserMessage[]>([
+    {
+      id: 'm1',
+      sender: 'Samuel M.',
+      text: 'When is the next gameweek schedule being updated?',
+      timestamp: '2026-09-14 10:30 AM',
+      replies: [
+        { id: 'r1', sender: 'League Admin', text: 'All Gameweek 11 fixtures have been posted in the Matches tab.', timestamp: '2026-09-14 11:00 AM' }
+      ]
+    }
+  ]);
   const [newMessage, setNewMessage] = useState({ sender: '', text: '' });
+  const [activeReplyId, setActiveReplyId] = useState<string | null>(null);
+  const [replyForm, setReplyForm] = useState({ sender: '', text: '' });
   
   const [teamComments, setTeamComments] = useState<TeamComment[]>([]);
   const [newComment, setNewComment] = useState({ teamName: '', comment: '' });
+
+  // Match Fixture Emoji Reactions (matchId -> emoji -> count)
+  const [matchReactions, setMatchReactions] = useState<{ [key: string]: { [emoji: string]: number } }>({});
 
   // Players of the Day/Match
   const [potd, setPotd] = useState({ name: 'Outstanding Player', team: 'TBD', mediaUrl: 'https://images.unsplash.com/photo-1579952363873-27f3bade9f55?auto=format&fit=crop&q=80&w=300' });
@@ -102,7 +166,7 @@ export default function KirinyagaSouthSuperLeague() {
     location: 'Kirinyaga South Sub-County Stadium & Regional Pitches, Central Kenya',
     phone: '+254 712 345 678',
     email: 'info@kirinyagasouthleague.co.ke',
-    address: 'P.O. Box 45 - Wang\'uru, Kirinyaga County'
+    address: "P.O. Box 45 - Wang'uru, Kirinyaga County"
   });
 
   // Modal forms
@@ -159,14 +223,19 @@ export default function KirinyagaSouthSuperLeague() {
     fetchLeagueData();
   }, []);
 
-  // Slideshow
+  // Slideshow (Combines team logos and user hero media)
+  const combinedHeroMedia = useMemo(() => {
+    const teamMedia = teams.map(t => ({ id: t.id, url: t.logo, title: `${t.name} (${t.town})` }));
+    return [...heroMediaList, ...teamMedia];
+  }, [teams, heroMediaList]);
+
   useEffect(() => {
-    if (teams.length === 0) return;
+    if (combinedHeroMedia.length === 0) return;
     const interval = setInterval(() => {
-      setCurrentSlide((prevIndex) => (prevIndex + 1) % teams.length);
+      setCurrentSlide((prevIndex) => (prevIndex + 1) % combinedHeroMedia.length);
     }, 5000);
     return () => clearInterval(interval);
-  }, [teams.length]);
+  }, [combinedHeroMedia.length]);
 
   const sortedTeams = useMemo(() => {
     return [...teams].sort((a, b) => {
@@ -194,6 +263,20 @@ export default function KirinyagaSouthSuperLeague() {
     }
   };
 
+  const handleAddHeroMedia = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newHeroMediaUrl) return;
+    const item: HeroMedia = {
+      id: 'hm_' + Date.now(),
+      url: newHeroMediaUrl,
+      title: newHeroMediaTitle || 'Kirinyaga League Media'
+    };
+    setHeroMediaList([item, ...heroMediaList]);
+    setNewHeroMediaUrl('');
+    setNewHeroMediaTitle('');
+    setShowHeroMediaModal(false);
+  };
+
   const openTeamModal = (team: Team | null = null) => {
     if (team) {
       setEditingTeam(team);
@@ -218,6 +301,7 @@ export default function KirinyagaSouthSuperLeague() {
   };
 
   const handleDeleteTeam = (id: string) => {
+    if (!isAdmin) return;
     if (confirm("Are you sure you want to remove this team?")) {
       setTeams(teams.filter(t => t.id !== id));
     }
@@ -260,6 +344,7 @@ export default function KirinyagaSouthSuperLeague() {
   };
 
   const handleDeleteFixture = (id: string) => {
+    if (!isAdmin) return;
     if (confirm("Remove this match fixture?")) {
       setMatches(matches.filter(m => m.id !== id));
     }
@@ -328,11 +413,31 @@ export default function KirinyagaSouthSuperLeague() {
     setShowEditPlayerModal(false);
   };
 
+  // Message & Reply Handlers
   const handlePostMessage = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.text || !newMessage.sender) return;
-    setMessages([{ id: Date.now().toString(), ...newMessage, timestamp: new Date().toLocaleString() }, ...messages]);
+    setMessages([{ id: Date.now().toString(), ...newMessage, replies: [], timestamp: new Date().toLocaleString() }, ...messages]);
     setNewMessage({ sender: '', text: '' });
+  };
+
+  const handlePostReply = (e: React.FormEvent, messageId: string) => {
+    e.preventDefault();
+    if (!replyForm.sender || !replyForm.text) return;
+    const replyObj: MessageReply = {
+      id: 'rep_' + Date.now(),
+      sender: replyForm.sender,
+      text: replyForm.text,
+      timestamp: new Date().toLocaleString()
+    };
+    setMessages(messages.map(m => {
+      if (m.id === messageId) {
+        return { ...m, replies: [...(m.replies || []), replyObj] };
+      }
+      return m;
+    }));
+    setReplyForm({ sender: '', text: '' });
+    setActiveReplyId(null);
   };
 
   const handlePostComment = (e: React.FormEvent) => {
@@ -342,14 +447,64 @@ export default function KirinyagaSouthSuperLeague() {
     setNewComment({ teamName: '', comment: '' });
   };
 
-  const deleteMessage = (id: string) => setMessages(messages.filter(m => m.id !== id));
-  const deleteComment = (id: string) => setTeamComments(teamComments.filter(c => c.id !== id));
+  // Reactions Handler
+  const handleEmojiReaction = (matchId: string, emoji: string) => {
+    setMatchReactions((prev) => {
+      const matchObj = prev[matchId] || {};
+      const count = matchObj[emoji] || 0;
+      return {
+        ...prev,
+        [matchId]: {
+          ...matchObj,
+          [emoji]: count + 1
+        }
+      };
+    });
+  };
 
-  const currentSlideTeam = teams[currentSlide] || teams[0];
+  // Team Official Save Handler
+  const handleSaveTeamOfficial = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingOfficialTeamId || !officialForm.officialName) return;
+    setTeamOfficials({
+      ...teamOfficials,
+      [editingOfficialTeamId]: {
+        teamId: editingOfficialTeamId,
+        officialName: officialForm.officialName,
+        role: officialForm.role || 'Team Representative',
+        phone: officialForm.phone || 'N/A'
+      }
+    });
+    setEditingOfficialTeamId(null);
+    setOfficialForm({ officialName: '', role: 'Team Representative', phone: '' });
+  };
+
+  // Strictly Admin Only Deletion Authority
+  const deleteMessage = (id: string) => {
+    if (!isAdmin) return;
+    setMessages(messages.filter(m => m.id !== id));
+  };
+
+  const deleteReply = (messageId: string, replyId: string) => {
+    if (!isAdmin) return;
+    setMessages(messages.map(m => {
+      if (m.id === messageId) {
+        return { ...m, replies: (m.replies || []).filter(r => r.id !== replyId) };
+      }
+      return m;
+    }));
+  };
+
+  const deleteComment = (id: string) => {
+    if (!isAdmin) return;
+    setTeamComments(teamComments.filter(c => c.id !== id));
+  };
+
+  const currentMedia = combinedHeroMedia[currentSlide] || combinedHeroMedia[0];
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans flex flex-col antialiased selection:bg-emerald-500 selection:text-black">
-      {/* BACKGROUND GRAPHICS (Updated transparency) */}
+      {/* BACKGROUND GRAPHICS */}
       <div className="fixed inset-0 pointer-events-none opacity-[0.07] z-0 bg-[radial-gradient(#10b981_1px,transparent_1px)] [background-size:24px_24px] mix-blend-screen"></div>
 
       {/* --- TOP HEADER NAVIGATION --- */}
@@ -370,12 +525,19 @@ export default function KirinyagaSouthSuperLeague() {
               </div>
             </div>
 
+            {/* Desktop Navigation */}
             <nav className="hidden md:flex items-center space-x-2">
               <button onClick={() => setActiveSection('table')} className={`px-4 py-2 rounded-lg font-medium text-sm transition-all flex items-center space-x-2 ${activeSection === 'table' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30' : 'text-slate-300 hover:bg-slate-800'}`}>
                 <Trophy className="w-4 h-4" /><span>Standings</span>
               </button>
               <button onClick={() => setActiveSection('matches')} className={`px-4 py-2 rounded-lg font-medium text-sm transition-all flex items-center space-x-2 ${activeSection === 'matches' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30' : 'text-slate-300 hover:bg-slate-800'}`}>
                 <Flame className="w-4 h-4 text-amber-400" /><span>Matches</span>
+              </button>
+              <button onClick={() => setActiveSection('messages')} className={`px-4 py-2 rounded-lg font-medium text-sm transition-all flex items-center space-x-2 ${activeSection === 'messages' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30' : 'text-slate-300 hover:bg-slate-800'}`}>
+                <MessageSquare className="w-4 h-4 text-blue-400" /><span>Messages</span>
+              </button>
+              <button onClick={() => setActiveSection('officials')} className={`px-4 py-2 rounded-lg font-medium text-sm transition-all flex items-center space-x-2 ${activeSection === 'officials' ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/30' : 'text-slate-300 hover:bg-slate-800'}`}>
+                <UserCheck className="w-4 h-4 text-purple-400" /><span>Officials</span>
               </button>
             </nav>
 
@@ -405,7 +567,7 @@ export default function KirinyagaSouthSuperLeague() {
         {/* Mobile Nav Dropdown */}
         {mobileMenuOpen && (
           <div className="md:hidden bg-slate-900 border-b border-slate-800 px-4 pt-2 pb-6 space-y-2">
-            {['table', 'matches', 'stats', 'messages', 'comments', 'about', 'location', 'contacts'].map((section) => (
+            {['table', 'matches', 'messages', 'officials', 'stats', 'comments', 'about', 'location', 'contacts'].map((section) => (
               <button
                 key={section}
                 onClick={() => { setActiveSection(section); setMobileMenuOpen(false); }}
@@ -427,25 +589,35 @@ export default function KirinyagaSouthSuperLeague() {
         )}
       </header>
 
-      {/* --- HERO SLIDESHOW --- */}
-      <section className="relative w-full h-[320px] sm:h-[400px] overflow-hidden bg-slate-900 border-b border-emerald-950">
-        {teams.map((t, idx) => (
-          <div key={t.id} className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${idx === currentSlide ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
-            <MediaRenderer url={t.logo} className="w-full h-full filter brightness-[0.35] scale-105 transform transition-transform duration-[5000ms]" />
+      {/* --- HERO SLIDESHOW / LANDING PAGE MEDIA TOOL --- */}
+      <section className="relative w-full h-[320px] sm:h-[420px] overflow-hidden bg-slate-900 border-b border-emerald-950">
+        {combinedHeroMedia.map((m, idx) => (
+          <div key={m.id + idx} className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${idx === currentSlide ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
+            <MediaRenderer url={m.url} className="w-full h-full filter brightness-[0.35] scale-105 transform transition-transform duration-[5000ms]" />
             <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent"></div>
           </div>
         ))}
+
+        {/* HERO EDITING TOOL FOR LANDING PAGE */}
+        <div className="absolute top-4 right-4 z-20">
+          <button onClick={() => setShowHeroMediaModal(true)} className="bg-emerald-600/90 hover:bg-emerald-500 text-white px-3 py-2 rounded-xl text-xs font-bold flex items-center space-x-2 shadow-lg backdrop-blur-md transition-all">
+            <Plus className="w-4 h-4" />
+            <Video className="w-4 h-4" />
+            <span>Add Hero Media (Image/Video)</span>
+          </button>
+        </div>
+
         <div className="relative z-10 max-w-7xl mx-auto h-full px-4 flex flex-col justify-end pb-8">
           <div className="flex items-center space-x-3 mb-2">
             <span className="bg-amber-400/20 text-amber-300 border border-amber-400/40 px-3 py-1 rounded-full text-xs font-bold uppercase flex items-center space-x-1">
-              <Flame className="w-3.5 h-3.5 text-amber-400 fill-amber-400" /><span>League Teams</span>
+              <Flame className="w-3.5 h-3.5 text-amber-400 fill-amber-400" /><span>League Media Showcase</span>
             </span>
           </div>
           <div className="flex justify-between items-end gap-4">
             <div>
-              <h2 className="text-3xl sm:text-5xl font-extrabold text-white">{currentSlideTeam?.name || 'Kirinyaga South'}</h2>
+              <h2 className="text-3xl sm:text-5xl font-extrabold text-white">{currentMedia?.title || 'Kirinyaga South Super League'}</h2>
               <p className="text-emerald-400 mt-1 flex items-center space-x-2">
-                <MapPin className="w-4 h-4" /><span>{currentSlideTeam?.town || 'Central'} • {currentSlideTeam?.points || 0} PTS</span>
+                <MapPin className="w-4 h-4" /><span>Central Kenya Grassroots Football</span>
               </p>
             </div>
           </div>
@@ -467,8 +639,9 @@ export default function KirinyagaSouthSuperLeague() {
                 {[
                   { id: 'table', icon: Trophy, label: 'Table Standings' },
                   { id: 'matches', icon: Flame, label: 'Matches & Fixtures' },
-                  { id: 'stats', icon: BarChart3, label: 'Stats & Players' },
                   { id: 'messages', icon: MessageSquare, label: 'Public Messages' },
+                  { id: 'officials', icon: UserCheck, label: 'League Officials' },
+                  { id: 'stats', icon: BarChart3, label: 'Stats & Players' },
                   { id: 'comments', icon: Users, label: 'Team Comments' },
                   { id: 'about', icon: Info, label: 'About' },
                   { id: 'location', icon: MapPin, label: 'Location' },
@@ -560,16 +733,18 @@ export default function KirinyagaSouthSuperLeague() {
               </div>
             )}
 
-            {/* MATCHES */}
+            {/* MATCHES WITH EMOJI REACTIONS */}
             {activeSection === 'matches' && (
               <div className="bg-slate-900 rounded-2xl border border-slate-800 shadow-2xl p-6">
                 <h3 className="text-xl font-extrabold text-white flex items-center space-x-2 border-b border-slate-800 pb-4 mb-4">
-                  <Flame className="w-5 h-5 text-amber-400" /><span>Matches & Results</span>
+                  <Flame className="w-5 h-5 text-amber-400" /><span>Matches & Fixtures</span>
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {matches.map((match) => {
                     const homeTeam = teams.find((t) => t.id === match.homeTeamId);
                     const awayTeam = teams.find((t) => t.id === match.awayTeamId);
+                    const reactions = matchReactions[match.id] || {};
+
                     return (
                       <div key={match.id} className="bg-slate-950 rounded-xl p-4 border border-slate-800 space-y-3 relative">
                         {isAdmin && (
@@ -578,7 +753,9 @@ export default function KirinyagaSouthSuperLeague() {
                             <button onClick={() => handleDeleteFixture(match.id)} className="text-rose-400 p-1"><Trash2 className="w-3.5 h-3.5"/></button>
                           </div>
                         )}
-                        <div className="text-xs text-slate-400 font-semibold bg-emerald-950/60 inline-block px-2 py-1 rounded text-emerald-400">GW {match.gameweek} • {match.date}</div>
+                        <div className="text-xs text-slate-400 font-semibold bg-emerald-950/60 inline-block px-2 py-1 rounded text-emerald-400">
+                          GW {match.gameweek} • {match.date}
+                        </div>
                         <div className="flex items-center justify-between">
                           <div className="text-center flex-1">
                             <MediaRenderer url={homeTeam?.logo || ''} className="w-10 h-10 mx-auto rounded-full" />
@@ -596,6 +773,26 @@ export default function KirinyagaSouthSuperLeague() {
                             <p className="text-sm font-bold mt-1">{awayTeam?.name || 'TBD'}</p>
                           </div>
                         </div>
+
+                        {/* REACTION EMOJIS */}
+                        <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between">
+                          <span className="text-[11px] text-slate-500 font-medium">React:</span>
+                          <div className="flex space-x-1.5">
+                            {['🔥', '⚽', '👏', '❤️', '😮'].map((emoji) => (
+                              <button
+                                key={emoji}
+                                onClick={() => handleEmojiReaction(match.id, emoji)}
+                                className="bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg px-2 py-1 text-xs transition-transform active:scale-125 flex items-center space-x-1"
+                              >
+                                <span>{emoji}</span>
+                                {reactions[emoji] ? (
+                                  <span className="text-[10px] font-bold text-amber-400 ml-0.5">{reactions[emoji]}</span>
+                                ) : null}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
                         <div className="text-xs text-slate-500 pt-2 border-t border-slate-800 flex justify-between items-center">
                           <span>{match.venue}</span>
                           {isAdmin && (
@@ -607,6 +804,150 @@ export default function KirinyagaSouthSuperLeague() {
                       </div>
                     );
                   })}
+                </div>
+              </div>
+            )}
+
+            {/* PUBLIC MESSAGES & REPLIES */}
+            {activeSection === 'messages' && (
+              <div className="bg-slate-900 rounded-2xl border border-slate-800 shadow-2xl p-6 space-y-6">
+                <h3 className="text-xl font-extrabold text-white flex items-center space-x-2 border-b border-slate-800 pb-4">
+                  <MessageSquare className="w-5 h-5 text-blue-400" /><span>Public Messages & Discussion Board</span>
+                </h3>
+                
+                {/* Post New Message Form */}
+                <form onSubmit={handlePostMessage} className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-3">
+                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Ask a question or post a message</h4>
+                  <input type="text" placeholder="Your Name" required value={newMessage.sender} onChange={e => setNewMessage({...newMessage, sender: e.target.value})} className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white" />
+                  <textarea placeholder="Write a message about matches, league inquiries, or general updates..." required value={newMessage.text} onChange={e => setNewMessage({...newMessage, text: e.target.value})} className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white h-24" />
+                  <button type="submit" className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 px-4 rounded-lg text-sm w-full flex justify-center items-center space-x-2">
+                    <Send className="w-4 h-4" /><span>Post Public Message</span>
+                  </button>
+                </form>
+
+                {/* Display All Sent Messages & Public Replies */}
+                <div className="space-y-4">
+                  {messages.length === 0 ? (
+                    <p className="text-slate-500 text-sm italic">No messages yet. Be the first to ask!</p>
+                  ) : (
+                    messages.map((msg) => (
+                      <div key={msg.id} className="bg-slate-950/80 p-4 rounded-xl border border-slate-800 space-y-3 relative">
+                        {/* ONLY ADMIN AUTHORITY TO DELETE MESSAGES */}
+                        {isAdmin && (
+                          <button onClick={() => deleteMessage(msg.id)} className="absolute top-3 right-3 text-rose-500 hover:text-rose-400 p-1" title="Delete Message (Admin Only)">
+                            <Trash2 className="w-4 h-4"/>
+                          </button>
+                        )}
+                        
+                        <div>
+                          <p className="font-bold text-emerald-400 text-sm">{msg.sender} <span className="text-slate-500 text-xs font-normal ml-2">{msg.timestamp}</span></p>
+                          <p className="text-slate-200 text-sm mt-1">{msg.text}</p>
+                        </div>
+
+                        {/* Display Replies */}
+                        {msg.replies && msg.replies.length > 0 && (
+                          <div className="pl-4 border-l-2 border-emerald-600/40 space-y-2 mt-3 bg-slate-900/60 p-3 rounded-lg">
+                            <p className="text-[11px] font-bold text-slate-400 uppercase">Public Replies ({msg.replies.length})</p>
+                            {msg.replies.map((rep) => (
+                              <div key={rep.id} className="bg-slate-950 p-2.5 rounded border border-slate-800 relative">
+                                {isAdmin && (
+                                  <button onClick={() => deleteReply(msg.id, rep.id)} className="absolute top-2 right-2 text-rose-500 p-1" title="Delete Reply (Admin Only)">
+                                    <Trash2 className="w-3.5 h-3.5"/>
+                                  </button>
+                                )}
+                                <p className="text-xs font-bold text-amber-400">{rep.sender} <span className="text-slate-500 text-[10px] font-normal ml-1">{rep.timestamp}</span></p>
+                                <p className="text-xs text-slate-300 mt-0.5">{rep.text}</p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Reply Button & Toggle Form */}
+                        <div className="pt-2">
+                          {activeReplyId === msg.id ? (
+                            <form onSubmit={(e) => handlePostReply(e, msg.id)} className="space-y-2 bg-slate-900 p-3 rounded-lg border border-slate-800">
+                              <input type="text" placeholder="Your Name" required value={replyForm.sender} onChange={e => setReplyForm({...replyForm, sender: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs text-white" />
+                              <textarea placeholder="Write a reply..." required value={replyForm.text} onChange={e => setReplyForm({...replyForm, text: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs text-white h-16" />
+                              <div className="flex justify-end space-x-2">
+                                <button type="button" onClick={() => setActiveReplyId(null)} className="px-3 py-1 bg-slate-800 text-slate-300 rounded text-xs">Cancel</button>
+                                <button type="submit" className="px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded text-xs">Post Reply</button>
+                              </div>
+                            </form>
+                          ) : (
+                            <button onClick={() => { setActiveReplyId(msg.id); setReplyForm({ sender: '', text: '' }); }} className="text-xs text-blue-400 font-bold hover:underline flex items-center space-x-1">
+                              <MessageSquare className="w-3 h-3" /><span>Reply Publicly</span>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* LEAGUE OFFICIALS & TEAM REPRESENTATIVES */}
+            {activeSection === 'officials' && (
+              <div className="bg-slate-900 rounded-2xl border border-slate-800 shadow-2xl p-6 space-y-8">
+                <div>
+                  <h3 className="text-xl font-extrabold text-white flex items-center space-x-2 border-b border-slate-800 pb-4 mb-4">
+                    <UserCheck className="w-5 h-5 text-purple-400" /><span>Executive League Officials</span>
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {executiveOfficials.map((off) => (
+                      <div key={off.role} className="bg-slate-950 border border-slate-800 rounded-xl p-4 text-center">
+                        <span className="text-xs font-bold text-amber-400 uppercase tracking-widest bg-amber-400/10 px-2 py-0.5 rounded">{off.role}</span>
+                        <p className="text-lg font-bold text-white mt-2">{off.name}</p>
+                        <p className="text-xs text-slate-400 mt-1">{off.phone}</p>
+                        <p className="text-[11px] text-emerald-400 mt-0.5">{off.email}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* TEAM OFFICIALS TABLE */}
+                <div>
+                  <h3 className="text-lg font-extrabold text-white flex items-center space-x-2 border-b border-slate-800 pb-3 mb-4">
+                    <Shield className="w-5 h-5 text-emerald-400" /><span>Team Officials Table (1 Representative Per Team)</span>
+                  </h3>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-sm text-slate-300">
+                      <thead className="bg-slate-950 text-xs text-slate-400 uppercase border-b border-slate-800">
+                        <tr>
+                          <th className="py-3 px-4">TEAM</th>
+                          <th className="py-3 px-4">OFFICIAL REPRESENTATIVE</th>
+                          <th className="py-3 px-4">ROLE</th>
+                          <th className="py-3 px-4">CONTACT</th>
+                          {isAdmin && <th className="py-3 px-4 text-center">ACTION</th>}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-800/60">
+                        {teams.map((team) => {
+                          const official = teamOfficials[team.id];
+                          return (
+                            <tr key={team.id} className="hover:bg-slate-800/40">
+                              <td className="py-3 px-4 font-bold text-white flex items-center space-x-2">
+                                <MediaRenderer url={team.logo} className="w-6 h-6 rounded-full" />
+                                <span>{team.name}</span>
+                              </td>
+                              <td className="py-3 px-4 text-emerald-400 font-semibold">
+                                {official ? official.officialName : <span className="text-slate-500 italic">Not Assigned</span>}
+                              </td>
+                              <td className="py-3 px-4 text-slate-300">{official?.role || 'Team Representative'}</td>
+                              <td className="py-3 px-4 text-slate-400">{official?.phone || 'N/A'}</td>
+                              {isAdmin && (
+                                <td className="py-3 px-4 text-center">
+                                  <button onClick={() => { setEditingOfficialTeamId(team.id); setOfficialForm(official || { officialName: '', role: 'Team Representative', phone: '' }); }} className="text-xs bg-slate-800 hover:bg-slate-700 text-emerald-400 px-2.5 py-1 rounded font-bold">
+                                    Edit Official
+                                  </button>
+                                </td>
+                              )}
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
             )}
@@ -650,29 +991,6 @@ export default function KirinyagaSouthSuperLeague() {
               </div>
             )}
 
-            {/* MESSAGES */}
-            {activeSection === 'messages' && (
-              <div className="bg-slate-900 rounded-2xl border border-slate-800 shadow-2xl p-6">
-                <h3 className="text-xl font-extrabold text-white flex items-center space-x-2 border-b border-slate-800 pb-4 mb-4">
-                  <MessageSquare className="w-5 h-5 text-blue-400" /><span>Public Q&A / Messages</span>
-                </h3>
-                <form onSubmit={handlePostMessage} className="bg-slate-950 p-4 rounded-xl border border-slate-800 mb-6 space-y-3">
-                  <input type="text" placeholder="Your Name" required value={newMessage.sender} onChange={e => setNewMessage({...newMessage, sender: e.target.value})} className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white" />
-                  <textarea placeholder="Ask a question or leave a message about the league..." required value={newMessage.text} onChange={e => setNewMessage({...newMessage, text: e.target.value})} className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white h-24" />
-                  <button type="submit" className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded-lg text-sm w-full">Post Message</button>
-                </form>
-                <div className="space-y-3">
-                  {messages.length === 0 ? <p className="text-slate-500 text-sm italic">No messages yet. Be the first to ask!</p> : messages.map(msg => (
-                    <div key={msg.id} className="bg-slate-800/50 p-4 rounded-xl border border-slate-800 relative">
-                      {isAdmin && <button onClick={() => deleteMessage(msg.id)} className="absolute top-3 right-3 text-rose-500"><Trash2 className="w-4 h-4"/></button>}
-                      <p className="font-bold text-emerald-400 text-sm mb-1">{msg.sender} <span className="text-slate-500 text-xs font-normal ml-2">{msg.timestamp}</span></p>
-                      <p className="text-slate-300 text-sm">{msg.text}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
             {/* TEAM COMMENTS */}
             {activeSection === 'comments' && (
               <div className="bg-slate-900 rounded-2xl border border-slate-800 shadow-2xl p-6">
@@ -690,7 +1008,8 @@ export default function KirinyagaSouthSuperLeague() {
                 <div className="space-y-3">
                   {teamComments.length === 0 ? <p className="text-slate-500 text-sm italic">No comments yet. Support your favorite team!</p> : teamComments.map(c => (
                     <div key={c.id} className="bg-slate-800/50 p-4 rounded-xl border border-slate-800 relative">
-                      {isAdmin && <button onClick={() => deleteComment(c.id)} className="absolute top-3 right-3 text-rose-500"><Trash2 className="w-4 h-4"/></button>}
+                      {/* ONLY ADMIN AUTHORITY TO DELETE COMMENTS */}
+                      {isAdmin && <button onClick={() => deleteComment(c.id)} className="absolute top-3 right-3 text-rose-500 p-1" title="Delete Comment (Admin Only)"><Trash2 className="w-4 h-4"/></button>}
                       <p className="font-bold text-amber-400 text-sm mb-1">Regarding: {c.teamName} <span className="text-slate-500 text-xs font-normal ml-2">{c.timestamp}</span></p>
                       <p className="text-slate-300 text-sm">{c.comment}</p>
                     </div>
@@ -743,6 +1062,43 @@ export default function KirinyagaSouthSuperLeague() {
         </div>
       </div>
 
+      {/* --- LANDING PAGE MEDIA TOOL MODAL --- */}
+      {showHeroMediaModal && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-6 relative">
+            <button onClick={() => setShowHeroMediaModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-white"><X className="w-5 h-5" /></button>
+            <h3 className="text-lg font-bold text-white flex items-center mb-4"><Video className="w-5 h-5 text-emerald-400 mr-2"/> Add Hero Media to Landing Page</h3>
+            <form onSubmit={handleAddHeroMedia} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">Image or Video URL</label>
+                <input type="url" required placeholder="https://... (.jpg, .png, or .mp4 URL)" value={newHeroMediaUrl} onChange={(e) => setNewHeroMediaUrl(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">Title / Caption</label>
+                <input type="text" placeholder="e.g. Gameweek Highlights" value={newHeroMediaTitle} onChange={(e) => setNewHeroMediaTitle(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white" />
+              </div>
+              <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl">Add to Landing Showcase</button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* --- EDIT TEAM OFFICIAL MODAL --- */}
+      {editingOfficialTeamId && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-6 relative">
+            <button onClick={() => setEditingOfficialTeamId(null)} className="absolute top-4 right-4 text-slate-400"><X className="w-5 h-5" /></button>
+            <h3 className="text-lg font-bold text-white mb-4">Edit Team Official</h3>
+            <form onSubmit={handleSaveTeamOfficial} className="space-y-4">
+              <input type="text" placeholder="Official Representative Name" required value={officialForm.officialName} onChange={e => setOfficialForm({...officialForm, officialName: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-white" />
+              <input type="text" placeholder="Role (e.g. Manager / Official)" value={officialForm.role} onChange={e => setOfficialForm({...officialForm, role: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-white" />
+              <input type="text" placeholder="Phone Number" value={officialForm.phone} onChange={e => setOfficialForm({...officialForm, phone: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-white" />
+              <button type="submit" className="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-3 rounded-xl mt-4">Save Team Representative</button>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* --- ADMIN LOGIN MODAL --- */}
       {showAdminModal && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
@@ -779,7 +1135,6 @@ export default function KirinyagaSouthSuperLeague() {
                 <input type="url" placeholder="https://... image or video" value={teamForm.logo} onChange={e => setTeamForm({...teamForm, logo: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-white" />
               </div>
               
-              {/* Optional Admin Stat Edit Overrides */}
               {editingTeam && (
                 <div className="grid grid-cols-3 gap-2 border-t border-slate-800 pt-4 mt-2">
                   <div className="col-span-3 text-xs text-amber-400 font-bold mb-1">Manual Override Stats</div>
