@@ -599,13 +599,7 @@ export default function KirinyagaSouthSuperLeague() {
         ))}
 
         {/* HERO EDITING TOOL FOR LANDING PAGE */}
-        <div className="absolute top-4 right-4 z-20">
-          <button onClick={() => setShowHeroMediaModal(true)} className="bg-emerald-600/90 hover:bg-emerald-500 text-white px-3 py-2 rounded-xl text-xs font-bold flex items-center space-x-2 shadow-lg backdrop-blur-md transition-all">
-            <Plus className="w-4 h-4" />
-            <Video className="w-4 h-4" />
-            <span>Add Hero Media (Image/Video)</span>
-          </button>
-        </div>
+        
 
         <div className="relative z-10 max-w-7xl mx-auto h-full px-4 flex flex-col justify-end pb-8">
           <div className="flex items-center space-x-3 mb-2">
