@@ -74,6 +74,24 @@ const awardSchema = new mongoose.Schema({
 });
 const Award = mongoose.model('Award', awardSchema);
 
+// NEW: Player Schema
+const playerSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  team: { type: mongoose.Schema.Types.ObjectId, ref: 'Team' },
+  position: { type: String, default: 'Forward' },
+  goals: { type: Number, default: 0 },
+  assists: { type: Number, default: 0 }
+}, { timestamps: true });
+const Player = mongoose.model('Player', playerSchema);
+
+// NEW: HeroMedia Schema
+const heroMediaSchema = new mongoose.Schema({
+  title: { type: String },
+  url: { type: String, required: true },
+  type: { type: String, enum: ['image', 'video'], default: 'image' }
+}, { timestamps: true });
+const HeroMedia = mongoose.model('HeroMedia', heroMediaSchema);
+
 
 // --- AUTHENTICATION MIDDLEWARE ---
 const verifyAdmin = (req, res, next) => {
@@ -100,20 +118,18 @@ app.post('/api/admin/login', (req, res) => {
   try {
     console.log('Login Payload Received:', req.body);
     
-    // Safely extract fields
-    const email = req.body?.email;
-    const password = req.body?.password;
+    // Trim accidental whitespace and lowercase email
+    const email = req.body?.email?.toString().trim().toLowerCase();
+    const password = req.body?.password?.toString().trim();
     
-    // Only these two emails are allowed to log in
     const authorizedEmails = ['muchirimunene031@gmail.com', 'munene398@gmail.com'];
     
-    // Verify email matches authorized list and password matches ADMIN_PASSWORD
-    if (authorizedEmails.includes(email?.toLowerCase()) && password === ADMIN_PASSWORD) {
+    if (authorizedEmails.includes(email) && password === ADMIN_PASSWORD) {
       const token = jwt.sign({ role: 'admin' }, JWT_SECRET, { expiresIn: '24h' });
       return res.json({ success: true, token, message: 'Authenticated successfully' });
     }
     
-    return res.status(401).json({ success: false, message: 'Access Denied.' });
+    return res.status(401).json({ success: false, message: 'Access Denied. Incorrect email or password.' });
   } catch (err) {
     console.error('❌ Login Route Error:', err.message);
     return res.status(500).json({ success: false, message: 'Internal Server Error', error: err.message });
@@ -223,7 +239,60 @@ app.put('/api/matches/:id/score', verifyAdmin, async (req, res) => {
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
-// 4. COMMUNITY ENDPOINTS (MESSAGES & COMMENTS)
+// 4. PLAYERS ENDPOINTS
+app.get('/api/players', async (req, res) => {
+  try {
+    const players = await Player.find().populate('team', 'name logo');
+    res.json(players);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/players', verifyAdmin, async (req, res) => {
+  try {
+    const player = new Player(req.body);
+    await player.save();
+    res.status(201).json(player);
+  } catch (err) { res.status(400).json({ error: err.message }); }
+});
+
+app.put('/api/players/:id', verifyAdmin, async (req, res) => {
+  try {
+    const player = await Player.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    res.json(player);
+  } catch (err) { res.status(400).json({ error: err.message }); }
+});
+
+app.delete('/api/players/:id', verifyAdmin, async (req, res) => {
+  try {
+    await Player.findByIdAndDelete(req.params.id);
+    res.json({ message: 'Player deleted' });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// 5. HERO MEDIA ENDPOINTS
+app.get('/api/heroMedia', async (req, res) => {
+  try {
+    const media = await HeroMedia.find().sort({ createdAt: -1 });
+    res.json(media);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/heroMedia', verifyAdmin, async (req, res) => {
+  try {
+    const media = new HeroMedia(req.body);
+    await media.save();
+    res.status(201).json(media);
+  } catch (err) { res.status(400).json({ error: err.message }); }
+});
+
+app.delete('/api/heroMedia/:id', verifyAdmin, async (req, res) => {
+  try {
+    await HeroMedia.findByIdAndDelete(req.params.id);
+    res.json({ message: 'Hero media deleted' });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// 6. COMMUNITY ENDPOINTS (MESSAGES & COMMENTS)
 app.get('/api/messages', async (req, res) => {
   try { res.json(await Message.find().sort({ createdAt: -1 })); }
   catch (err) { res.status(500).json({ error: err.message }); }
@@ -254,7 +323,7 @@ app.delete('/api/comments/:id', verifyAdmin, async (req, res) => {
   catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// 5. AWARDS ENDPOINTS (POTD / POTM)
+// 7. AWARDS ENDPOINTS (POTD / POTM)
 app.get('/api/awards', async (req, res) => {
   try { res.json(await Award.find()); }
   catch (err) { res.status(500).json({ error: err.message }); }
@@ -271,7 +340,7 @@ app.put('/api/awards/:type', verifyAdmin, async (req, res) => {
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
-// 6. INFO ENDPOINTS
+// 8. INFO ENDPOINTS
 app.get('/api/info', async (req, res) => {
   try {
     let info = await LeagueInfo.findOne();
