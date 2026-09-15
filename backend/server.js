@@ -13,7 +13,7 @@ app.use(express.json());
 const PORT = process.env.PORT || 5000;
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/kirinyaga_super_league';
 const JWT_SECRET = process.env.JWT_SECRET || 'kirinyaga_super_secret_key';
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'KIMBIMBI_254'; // Aligned with frontend
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'KIMBIMBI_254';
 
 // --- MONGOOSE SCHEMAS & MODELS ---
 
@@ -52,7 +52,6 @@ const leagueInfoSchema = new mongoose.Schema({
 }, { timestamps: true });
 const LeagueInfo = mongoose.model('LeagueInfo', leagueInfoSchema);
 
-// NEW: Community & Awards Schemas
 const messageSchema = new mongoose.Schema({
   sender: { type: String, required: true },
   text: { type: String, required: true },
@@ -98,15 +97,27 @@ const verifyAdmin = (req, res, next) => {
 
 // 1. ADMIN LOGIN
 app.post('/api/admin/login', (req, res) => {
-  console.log('Login Payload Received:', req.body);
-  const { email, password } = req.body;
-  const authorizedEmails = ['muchirimunene031@gmail.com', 'munene398@gmail.com'];
-  
-  if (authorizedEmails.includes(email?.toLowerCase()) && password === KIMBIMBI_254) {
-    const token = jwt.sign({ role: 'admin' }, JWT_SECRET, { expiresIn: '24h' });
-    return res.json({ success: true, token, message: 'Authenticated successfully' });
+  try {
+    console.log('Login Payload Received:', req.body);
+    
+    // Safely extract fields
+    const email = req.body?.email;
+    const password = req.body?.password;
+    
+    // Only these two emails are allowed to log in
+    const authorizedEmails = ['muchirimunene031@gmail.com', 'munene398@gmail.com'];
+    
+    // Verify email matches authorized list and password matches ADMIN_PASSWORD
+    if (authorizedEmails.includes(email?.toLowerCase()) && password === ADMIN_PASSWORD) {
+      const token = jwt.sign({ role: 'admin' }, JWT_SECRET, { expiresIn: '24h' });
+      return res.json({ success: true, token, message: 'Authenticated successfully' });
+    }
+    
+    return res.status(401).json({ success: false, message: 'Access Denied.' });
+  } catch (err) {
+    console.error('❌ Login Route Error:', err.message);
+    return res.status(500).json({ success: false, message: 'Internal Server Error', error: err.message });
   }
-  return res.status(401).json({ success: false, message: 'Access Denied.' });
 });
 
 // 2. TEAMS ENDPOINTS
