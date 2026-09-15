@@ -268,14 +268,14 @@ export default function KirinyagaSouthSuperLeague() {
       const response = await fetch(`${BACKEND_URL}/api/admin/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: adminEmail, password: adminPassword })
+        body: JSON.stringify({ email: adminEmail, password: adminPassword }),
       });
       
       const data = await response.json();
       
-      if (data.success) {
+      if (response.ok && (data.success || data.token)) {
         setIsAdmin(true);
-        setAdminToken(data.token);
+        if (data.token) setAdminToken(data.token);
         setShowAdminModal(false);
         setAdminEmail('');
         setAdminPassword('');
