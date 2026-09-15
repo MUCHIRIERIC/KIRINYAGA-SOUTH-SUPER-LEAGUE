@@ -100,6 +100,7 @@ export default function KirinyagaSouthSuperLeague() {
   
   // Authentication
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
+  const [adminToken, setAdminToken] = useState<string>(''); // JWT Token State
   const [showAdminModal, setShowAdminModal] = useState<boolean>(false);
   const [adminEmail, setAdminEmail] = useState<string>('');
   const [adminPassword, setAdminPassword] = useState<string>('');
@@ -110,7 +111,7 @@ export default function KirinyagaSouthSuperLeague() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
   const [currentSlide, setCurrentSlide] = useState<number>(0);
 
-  // Landing Page Media Tool (Dummy data removed)
+  // Landing Page Media Tool
   const [heroMediaList, setHeroMediaList] = useState<HeroMedia[]>([]);
   const [showHeroMediaModal, setShowHeroMediaModal] = useState<boolean>(false);
   const [newHeroMediaUrl, setNewHeroMediaUrl] = useState<string>('');
@@ -128,7 +129,7 @@ export default function KirinyagaSouthSuperLeague() {
   const [editingOfficialTeamId, setEditingOfficialTeamId] = useState<string | null>(null);
   const [officialForm, setOfficialForm] = useState({ officialName: '', role: 'Team Representative', phone: '' });
 
-  // Community Features & Public Messages (Dummy data removed)
+  // Community Features & Public Messages
   const [messages, setMessages] = useState<UserMessage[]>([]);
   const [newMessage, setNewMessage] = useState({ sender: '', text: '' });
   const [activeReplyId, setActiveReplyId] = useState<string | null>(null);
@@ -140,14 +141,14 @@ export default function KirinyagaSouthSuperLeague() {
   // Match Fixture Emoji Reactions (matchId -> emoji -> count)
   const [matchReactions, setMatchReactions] = useState<{ [key: string]: { [emoji: string]: number } }>({});
 
-  // Players of the Day/Match (Dummy data removed)
+  // Players of the Day/Match
   const [potd, setPotd] = useState({ name: 'Outstanding Player', team: 'TBD', mediaUrl: '' });
   const [potm, setPotm] = useState({ name: 'MVP', match: 'TBD', mediaUrl: '' });
   const [showEditPlayerModal, setShowEditPlayerModal] = useState(false);
   const [editingPlayerType, setEditingPlayerType] = useState<'potd' | 'potm'>('potd');
   const [playerForm, setPlayerForm] = useState({ name: '', context: '', mediaUrl: '' });
 
-  // League Info (Initial values remain, but will be overwritten by fetch if available)
+  // League Info 
   const [leagueInfo, setLeagueInfo] = useState({
     about: 'The Kirinyaga South Super League is the premier grassroots football championship in Kirinyaga South Sub-County.',
     location: 'Kirinyaga South Sub-County Stadium & Regional Pitches, Central Kenya',
@@ -236,7 +237,7 @@ export default function KirinyagaSouthSuperLeague() {
     fetchLeagueData();
   }, []);
 
-  // Slideshow (Combines team logos and user hero media)
+  // Slideshow
   const combinedHeroMedia = useMemo(() => {
     const teamMedia = teams.map(t => ({ id: t.id, url: t.logo, title: `${t.name} (${t.town})` }));
     return [...heroMediaList, ...teamMedia];
@@ -260,19 +261,30 @@ export default function KirinyagaSouthSuperLeague() {
     });
   }, [teams]);
 
-  // --- HANDLERS (Now fetching to backend for persistence) ---
-  const handleAdminLogin = (e: React.FormEvent) => {
+  // --- HANDLERS ---
+  const handleAdminLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    const authorizedEmails = ['muchirimunene031@gmail.com', 'munene398@gmail.com'];
-    
-    if (authorizedEmails.includes(adminEmail.toLowerCase()) && adminPassword === 'KIMBIMBI@254') {
-      setIsAdmin(true);
-      setShowAdminModal(false);
-      setAdminEmail('');
-      setAdminPassword('');
-      setAdminError('');
-    } else {
-      setAdminError('Access Denied. Unauthorized email or incorrect password.');
+    try {
+      const response = await fetch(`${BACKEND_URL}/api/admin/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: adminEmail, password: adminPassword })
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        setIsAdmin(true);
+        setAdminToken(data.token);
+        setShowAdminModal(false);
+        setAdminEmail('');
+        setAdminPassword('');
+        setAdminError('');
+      } else {
+        setAdminError(data.message || 'Access Denied. Unauthorized email or incorrect password.');
+      }
+    } catch (error) {
+      setAdminError('Server connection error. Please try again.');
     }
   };
 
@@ -285,13 +297,14 @@ export default function KirinyagaSouthSuperLeague() {
       title: newHeroMediaTitle || 'Kirinyaga League Media'
     };
     
-    // Update local state instantly
     setHeroMediaList([item, ...heroMediaList]);
     
-    // Retain in backend database
     fetch(`${BACKEND_URL}/api/heroMedia`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${adminToken}` 
+      },
       body: JSON.stringify(item)
     }).catch(console.error);
 
@@ -326,11 +339,13 @@ export default function KirinyagaSouthSuperLeague() {
     }
     setShowTeamModal(false);
 
-    // Retain in database
     const url = isEdit ? `${BACKEND_URL}/api/teams/${tempId}` : `${BACKEND_URL}/api/teams`;
     fetch(url, {
       method: isEdit ? 'PUT' : 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${adminToken}`
+      },
       body: JSON.stringify(formattedTeam)
     }).catch(console.error);
   };
@@ -339,7 +354,10 @@ export default function KirinyagaSouthSuperLeague() {
     if (!isAdmin) return;
     if (confirm("Are you sure you want to remove this team?")) {
       setTeams(teams.filter(t => t.id !== id));
-      fetch(`${BACKEND_URL}/api/teams/${id}`, { method: 'DELETE' }).catch(console.error);
+      fetch(`${BACKEND_URL}/api/teams/${id}`, { 
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${adminToken}` }
+      }).catch(console.error);
     }
   };
 
@@ -381,11 +399,13 @@ export default function KirinyagaSouthSuperLeague() {
     }
     setShowFixtureModal(false);
 
-    // Retain in backend
     const url = isEdit ? `${BACKEND_URL}/api/matches/${tempId}` : `${BACKEND_URL}/api/matches`;
     fetch(url, {
       method: isEdit ? 'PUT' : 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${adminToken}`
+      },
       body: JSON.stringify(fixObj)
     }).catch(console.error);
   };
@@ -394,7 +414,10 @@ export default function KirinyagaSouthSuperLeague() {
     if (!isAdmin) return;
     if (confirm("Remove this match fixture?")) {
       setMatches(matches.filter(m => m.id !== id));
-      fetch(`${BACKEND_URL}/api/matches/${id}`, { method: 'DELETE' }).catch(console.error);
+      fetch(`${BACKEND_URL}/api/matches/${id}`, { 
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${adminToken}` }
+      }).catch(console.error);
     }
   };
 
@@ -417,7 +440,10 @@ export default function KirinyagaSouthSuperLeague() {
     // Push score update to DB
     fetch(`${BACKEND_URL}/api/matches/${editingMatch.id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${adminToken}`
+      },
       body: JSON.stringify(updatedMatch)
     }).catch(console.error);
 
@@ -456,7 +482,10 @@ export default function KirinyagaSouthSuperLeague() {
           if (updatedTeam !== team) {
              fetch(`${BACKEND_URL}/api/teams/${updatedTeam.id}`, {
                method: 'PUT',
-               headers: { 'Content-Type': 'application/json' },
+               headers: { 
+                 'Content-Type': 'application/json',
+                 'Authorization': `Bearer ${adminToken}`
+               },
                body: JSON.stringify(updatedTeam)
              }).catch(console.error);
           }
@@ -479,7 +508,10 @@ export default function KirinyagaSouthSuperLeague() {
     
     fetch(`${BACKEND_URL}/api/players/${editingPlayerType}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${adminToken}`
+      },
       body: JSON.stringify(payload)
     }).catch(console.error);
 
@@ -493,6 +525,7 @@ export default function KirinyagaSouthSuperLeague() {
     const msg = { id: Date.now().toString(), ...newMessage, replies: [], timestamp: new Date().toLocaleString() };
     setMessages([msg, ...messages]);
     
+    // Public post, no auth token needed
     fetch(`${BACKEND_URL}/api/messages`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -515,6 +548,7 @@ export default function KirinyagaSouthSuperLeague() {
     setMessages(messages.map(m => {
       if (m.id === messageId) {
         const updatedMsg = { ...m, replies: [...(m.replies || []), replyObj] };
+        // Public reply post, no auth token needed
         fetch(`${BACKEND_URL}/api/messages/${messageId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -535,6 +569,7 @@ export default function KirinyagaSouthSuperLeague() {
     const commentObj = { id: Date.now().toString(), ...newComment, timestamp: new Date().toLocaleString() };
     setTeamComments([commentObj, ...teamComments]);
     
+    // Public comment post, no auth token needed
     fetch(`${BACKEND_URL}/api/comments`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -577,7 +612,10 @@ export default function KirinyagaSouthSuperLeague() {
 
     fetch(`${BACKEND_URL}/api/officials/${editingOfficialTeamId}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${adminToken}`
+      },
       body: JSON.stringify(updatedOfficial)
     }).catch(console.error);
 
@@ -589,7 +627,10 @@ export default function KirinyagaSouthSuperLeague() {
   const deleteMessage = (id: string) => {
     if (!isAdmin) return;
     setMessages(messages.filter(m => m.id !== id));
-    fetch(`${BACKEND_URL}/api/messages/${id}`, { method: 'DELETE' }).catch(console.error);
+    fetch(`${BACKEND_URL}/api/messages/${id}`, { 
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${adminToken}` }
+    }).catch(console.error);
   };
 
   const deleteReply = (messageId: string, replyId: string) => {
@@ -599,7 +640,10 @@ export default function KirinyagaSouthSuperLeague() {
         const updatedMsg = { ...m, replies: (m.replies || []).filter(r => r.id !== replyId) };
         fetch(`${BACKEND_URL}/api/messages/${messageId}`, {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${adminToken}`
+          },
           body: JSON.stringify(updatedMsg)
         }).catch(console.error);
         return updatedMsg;
@@ -611,7 +655,10 @@ export default function KirinyagaSouthSuperLeague() {
   const deleteComment = (id: string) => {
     if (!isAdmin) return;
     setTeamComments(teamComments.filter(c => c.id !== id));
-    fetch(`${BACKEND_URL}/api/comments/${id}`, { method: 'DELETE' }).catch(console.error);
+    fetch(`${BACKEND_URL}/api/comments/${id}`, { 
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${adminToken}` }
+    }).catch(console.error);
   };
 
   const currentMedia = combinedHeroMedia[currentSlide] || combinedHeroMedia[0];
@@ -1148,7 +1195,10 @@ export default function KirinyagaSouthSuperLeague() {
                       setEditingInfo(false); 
                       fetch(`${BACKEND_URL}/api/info`, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 
+                          'Content-Type': 'application/json',
+                          'Authorization': `Bearer ${adminToken}`
+                        },
                         body: JSON.stringify(tempInfo)
                       }).catch(console.error);
                   }} className="space-y-4">
