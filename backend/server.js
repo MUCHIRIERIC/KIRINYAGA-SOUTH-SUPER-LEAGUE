@@ -13,7 +13,7 @@ app.use(express.json());
 const PORT = process.env.PORT || 5000;
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/kirinyaga_super_league';
 const JWT_SECRET = process.env.JWT_SECRET || 'kirinyaga_super_secret_key';
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'KIMBIMBI@254'; // Aligned with frontend
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'KIMBIMBI_254'; // Aligned with frontend
 
 // --- MONGOOSE SCHEMAS & MODELS ---
 
@@ -102,7 +102,7 @@ app.post('/api/admin/login', (req, res) => {
   const { email, password } = req.body;
   const authorizedEmails = ['muchirimunene031@gmail.com', 'munene398@gmail.com'];
   
-  if (authorizedEmails.includes(email?.toLowerCase()) && password === ADMIN_PASSWORD) {
+  if (authorizedEmails.includes(email?.toLowerCase()) && password === KIMBIMBI_254) {
     const token = jwt.sign({ role: 'admin' }, JWT_SECRET, { expiresIn: '24h' });
     return res.json({ success: true, token, message: 'Authenticated successfully' });
   }
