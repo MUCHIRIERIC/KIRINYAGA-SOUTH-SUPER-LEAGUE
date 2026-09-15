@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import {
   Trophy, Calendar, Shield, MapPin, Phone, Mail, Plus, Edit3, Lock, Unlock,
   ChevronRight, ChevronLeft, BarChart3, Info, X, Menu, Flame, MessageSquare,
-  Users, Star, Trash2, Video, UserCheck, Send, Image, Smile
+  Users, Star, Trash2, Video, UserCheck, Send, Image, Smile, Eye, EyeOff
 } from 'lucide-react';
 
 const BACKEND_URL = 'https://kirinyaga-south-super-league-6.onrender.com';
@@ -105,6 +105,10 @@ export default function KirinyagaSouthSuperLeague() {
   const [adminEmail, setAdminEmail] = useState<string>('');
   const [adminPassword, setAdminPassword] = useState<string>('');
   const [adminError, setAdminError] = useState<string>('');
+  
+  // New States for Password Management
+  const [showPassword, setShowPassword] = useState<boolean>(false);
+  const [showUniversalPassword, setShowUniversalPassword] = useState<boolean>(false);
   
   // Navigation
   const [activeSection, setActiveSection] = useState<string>('table');
@@ -1275,19 +1279,76 @@ export default function KirinyagaSouthSuperLeague() {
       {showAdminModal && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-6 relative">
-            <button onClick={() => setShowAdminModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-white"><X className="w-5 h-5" /></button>
-            <h3 className="text-lg font-bold text-white flex items-center mb-4"><Lock className="w-5 h-5 text-amber-400 mr-2"/> Authorized Login</h3>
+            <button 
+              onClick={() => { 
+                setShowAdminModal(false); 
+                setShowUniversalPassword(false); // Reset on close
+                setAdminError(''); 
+              }} 
+              className="absolute top-4 right-4 text-slate-400 hover:text-white"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <h3 className="text-lg font-bold text-white flex items-center mb-4">
+              <Lock className="w-5 h-5 text-amber-400 mr-2"/> Authorized Login
+            </h3>
+            
             <form onSubmit={handleAdminLogin} className="space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-300 mb-1">Email Address</label>
-                <input type="email" required value={adminEmail} onChange={(e) => setAdminEmail(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white" />
+                <input 
+                  type="email" 
+                  required 
+                  value={adminEmail} 
+                  onChange={(e) => setAdminEmail(e.target.value)} 
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white" 
+                />
               </div>
+              
               <div>
                 <label className="block text-xs font-semibold text-slate-300 mb-1">Passcode</label>
-                <input type="password" required value={adminPassword} onChange={(e) => setAdminPassword(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white" />
+                <div className="relative">
+                  <input 
+                    type={showPassword ? "text" : "password"} 
+                    required 
+                    value={adminPassword} 
+                    onChange={(e) => setAdminPassword(e.target.value)} 
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white pr-10" 
+                  />
+                  <button 
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-emerald-400 transition-colors"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
               </div>
+
+              {/* Forgot Password Trigger */}
+              <div className="flex justify-start">
+                <button 
+                  type="button" 
+                  onClick={() => setShowUniversalPassword(true)}
+                  className="text-xs text-amber-400 hover:text-amber-300 font-semibold transition-colors"
+                >
+                  Forgot Password?
+                </button>
+              </div>
+
+              {/* Universal Password Reveal */}
+              {showUniversalPassword && (
+                <div className="bg-slate-950 border border-amber-500/30 p-3 rounded-xl text-center shadow-inner">
+                  <p className="text-xs text-slate-400 mb-1">Use the universal passcode:</p>
+                  <p className="text-sm font-black text-amber-400 tracking-widest">KIMBIMBI@254</p>
+                </div>
+              )}
+
               {adminError && <p className="text-rose-500 text-xs font-bold">{adminError}</p>}
-              <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl">Unlock System</button>
+              
+              <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl transition-colors mt-2">
+                Unlock System
+              </button>
             </form>
           </div>
         </div>
