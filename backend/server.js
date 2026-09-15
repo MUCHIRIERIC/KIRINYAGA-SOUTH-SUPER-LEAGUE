@@ -98,6 +98,7 @@ const verifyAdmin = (req, res, next) => {
 
 // 1. ADMIN LOGIN
 app.post('/api/admin/login', (req, res) => {
+  console.log('Login Payload Received:', req.body);
   const { email, password } = req.body;
   const authorizedEmails = ['muchirimunene031@gmail.com', 'munene398@gmail.com'];
   
