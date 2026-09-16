@@ -116,10 +116,12 @@ const verifyAdmin = (req, res, next) => {
 // 1. ADMIN LOGIN
 app.post('/api/admin/login', (req, res) => {
   try {
-    console.log('Login Payload Received:', req.body);
-    
-    // Trim accidental whitespace and lowercase email
+    // Extract and format the email first
     const email = req.body?.email?.toString().trim().toLowerCase();
+    
+    // SANITIZED LOGGING: Only log the email, never the plaintext password
+    console.log(`Login attempt initiated for: ${email}`);
+    
     const password = req.body?.password?.toString().trim();
     
     const authorizedEmails = ['muchirimunene031@gmail.com', 'munene398@gmail.com'];
