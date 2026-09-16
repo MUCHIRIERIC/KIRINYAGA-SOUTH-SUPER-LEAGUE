@@ -13,7 +13,7 @@ app.use(express.json());
 const PORT = process.env.PORT || 5000;
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/kirinyaga_super_league';
 const JWT_SECRET = process.env.JWT_SECRET || 'kirinyaga_super_secret_key';
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'KIMBIMBI_254';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'KIMBIMBI254';
 
 // --- MONGOOSE SCHEMAS & MODELS ---
 
