@@ -100,13 +100,13 @@ export default function KirinyagaSouthSuperLeague() {
   
   // Authentication
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
-  const [adminToken, setAdminToken] = useState<string>(''); // JWT Token State
+  const [adminToken, setAdminToken] = useState<string>('');
   const [showAdminModal, setShowAdminModal] = useState<boolean>(false);
   const [adminEmail, setAdminEmail] = useState<string>('');
   const [adminPassword, setAdminPassword] = useState<string>('');
   const [adminError, setAdminError] = useState<string>('');
   
-  // New States for Password Management
+  // Password Management
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [showUniversalPassword, setShowUniversalPassword] = useState<boolean>(false);
   
@@ -122,7 +122,7 @@ export default function KirinyagaSouthSuperLeague() {
   const [newHeroMediaTitle, setNewHeroMediaTitle] = useState<string>('');
 
   // Officials State
-  const [executiveOfficials, setExecutiveOfficials] = useState<ExecutiveOfficial[]>([
+  const [executiveOfficials] = useState<ExecutiveOfficial[]>([
     { role: 'Chairman', name: 'John Kariuki', phone: '+254 712 000 111', email: 'chairman@kirinyagaleague.co.ke' },
     { role: 'Treasurer', name: 'Mary Wanjiku', phone: '+254 722 000 222', email: 'treasurer@kirinyagaleague.co.ke' },
     { role: 'Secretary', name: 'David Njuguna', phone: '+254 733 000 333', email: 'secretary@kirinyagaleague.co.ke' },
@@ -133,7 +133,7 @@ export default function KirinyagaSouthSuperLeague() {
   const [editingOfficialTeamId, setEditingOfficialTeamId] = useState<string | null>(null);
   const [officialForm, setOfficialForm] = useState({ officialName: '', role: 'Team Representative', phone: '' });
 
-  // Community Features & Public Messages
+  // Community Features
   const [messages, setMessages] = useState<UserMessage[]>([]);
   const [newMessage, setNewMessage] = useState({ sender: '', text: '' });
   const [activeReplyId, setActiveReplyId] = useState<string | null>(null);
@@ -141,11 +141,9 @@ export default function KirinyagaSouthSuperLeague() {
   
   const [teamComments, setTeamComments] = useState<TeamComment[]>([]);
   const [newComment, setNewComment] = useState({ teamName: '', comment: '' });
-
-  // Match Fixture Emoji Reactions (matchId -> emoji -> count)
   const [matchReactions, setMatchReactions] = useState<{ [key: string]: { [emoji: string]: number } }>({});
 
-  // Players of the Day/Match
+  // Player Highlights
   const [potd, setPotd] = useState({ name: 'Outstanding Player', team: 'TBD', mediaUrl: '' });
   const [potm, setPotm] = useState({ name: 'MVP', match: 'TBD', mediaUrl: '' });
   const [showEditPlayerModal, setShowEditPlayerModal] = useState(false);
@@ -161,7 +159,7 @@ export default function KirinyagaSouthSuperLeague() {
     address: "P.O. Box 45 - Wang'uru, Kirinyaga County"
   });
 
-  // Modal forms
+  // Modals
   const [showTeamModal, setShowTeamModal] = useState<boolean>(false);
   const [editingTeam, setEditingTeam] = useState<Team | null>(null);
   const [teamForm, setTeamForm] = useState({ name: '', town: '', logo: '', played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, points: 0 });
@@ -233,7 +231,6 @@ export default function KirinyagaSouthSuperLeague() {
           const data = await commentsRes.json();
           if (data.length) setTeamComments(data);
         }
-
       } catch (error) {
         console.error("Error fetching backend data:", error);
       }
@@ -268,6 +265,8 @@ export default function KirinyagaSouthSuperLeague() {
   // --- HANDLERS ---
   const handleAdminLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setAdminError('');
+    
     try {
       const response = await fetch(`${BACKEND_URL}/api/admin/login`, {
         method: 'POST',
@@ -275,7 +274,12 @@ export default function KirinyagaSouthSuperLeague() {
         body: JSON.stringify({ email: adminEmail, password: adminPassword }),
       });
       
-      const data = await response.json();
+      let data;
+      try {
+        data = await response.json();
+      } catch (parseError) {
+        data = { message: 'Network or authentication error.' };
+      }
       
       if (response.ok && (data.success || data.token)) {
         setIsAdmin(true);
@@ -283,12 +287,11 @@ export default function KirinyagaSouthSuperLeague() {
         setShowAdminModal(false);
         setAdminEmail('');
         setAdminPassword('');
-        setAdminError('');
       } else {
         setAdminError(data.message || 'Access Denied. Unauthorized email or incorrect password.');
       }
     } catch (error) {
-      setAdminError('Server connection error. Please try again.');
+      setAdminError('Server connection error. Please try again later.');
     }
   };
 
@@ -431,17 +434,10 @@ export default function KirinyagaSouthSuperLeague() {
 
     const homeVal = Number(matchScore.home);
     const awayVal = Number(matchScore.away);
-
     const updatedMatch = { ...editingMatch, homeScore: homeVal, awayScore: awayVal, status: 'Completed' as const };
     
-    const updatedMatches = matches.map((m) => {
-      if (m.id === editingMatch.id) return updatedMatch;
-      return m;
-    });
-    
-    setMatches(updatedMatches);
+    setMatches(matches.map(m => m.id === editingMatch.id ? updatedMatch : m));
 
-    // Push score update to DB
     fetch(`${BACKEND_URL}/api/matches/${editingMatch.id}`, {
       method: 'PUT',
       headers: { 
@@ -504,11 +500,8 @@ export default function KirinyagaSouthSuperLeague() {
     e.preventDefault();
     const payload = { name: playerForm.name, [editingPlayerType === 'potd' ? 'team' : 'match']: playerForm.context, mediaUrl: playerForm.mediaUrl };
     
-    if (editingPlayerType === 'potd') {
-      setPotd(payload as any);
-    } else {
-      setPotm(payload as any);
-    }
+    if (editingPlayerType === 'potd') setPotd(payload as any);
+    else setPotm(payload as any);
     
     fetch(`${BACKEND_URL}/api/players/${editingPlayerType}`, {
       method: 'POST',
@@ -522,14 +515,12 @@ export default function KirinyagaSouthSuperLeague() {
     setShowEditPlayerModal(false);
   };
 
-  // Message & Reply Handlers
   const handlePostMessage = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.text || !newMessage.sender) return;
     const msg = { id: Date.now().toString(), ...newMessage, replies: [], timestamp: new Date().toLocaleString() };
     setMessages([msg, ...messages]);
     
-    // Public post, no auth token needed
     fetch(`${BACKEND_URL}/api/messages`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -552,7 +543,6 @@ export default function KirinyagaSouthSuperLeague() {
     setMessages(messages.map(m => {
       if (m.id === messageId) {
         const updatedMsg = { ...m, replies: [...(m.replies || []), replyObj] };
-        // Public reply post, no auth token needed
         fetch(`${BACKEND_URL}/api/messages/${messageId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -573,7 +563,6 @@ export default function KirinyagaSouthSuperLeague() {
     const commentObj = { id: Date.now().toString(), ...newComment, timestamp: new Date().toLocaleString() };
     setTeamComments([commentObj, ...teamComments]);
     
-    // Public comment post, no auth token needed
     fetch(`${BACKEND_URL}/api/comments`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -583,22 +572,14 @@ export default function KirinyagaSouthSuperLeague() {
     setNewComment({ teamName: '', comment: '' });
   };
 
-  // Reactions Handler
   const handleEmojiReaction = (matchId: string, emoji: string) => {
     setMatchReactions((prev) => {
       const matchObj = prev[matchId] || {};
       const count = matchObj[emoji] || 0;
-      return {
-        ...prev,
-        [matchId]: {
-          ...matchObj,
-          [emoji]: count + 1
-        }
-      };
+      return { ...prev, [matchId]: { ...matchObj, [emoji]: count + 1 } };
     });
   };
 
-  // Team Official Save Handler
   const handleSaveTeamOfficial = (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingOfficialTeamId || !officialForm.officialName) return;
@@ -609,10 +590,7 @@ export default function KirinyagaSouthSuperLeague() {
       phone: officialForm.phone || 'N/A'
     };
     
-    setTeamOfficials({
-      ...teamOfficials,
-      [editingOfficialTeamId]: updatedOfficial
-    });
+    setTeamOfficials({ ...teamOfficials, [editingOfficialTeamId]: updatedOfficial });
 
     fetch(`${BACKEND_URL}/api/officials/${editingOfficialTeamId}`, {
       method: 'POST',
@@ -627,7 +605,6 @@ export default function KirinyagaSouthSuperLeague() {
     setOfficialForm({ officialName: '', role: 'Team Representative', phone: '' });
   };
 
-  // Strictly Admin Only Deletion Authority
   const deleteMessage = (id: string) => {
     if (!isAdmin) return;
     setMessages(messages.filter(m => m.id !== id));
@@ -763,7 +740,6 @@ export default function KirinyagaSouthSuperLeague() {
           </div>
         ))}
 
-        {/* ADMIN DASHBOARD - ADD / EDIT HERO MEDIA BUTTON */}
         {isAdmin && (
           <div className="absolute top-6 right-6 z-20">
             <button 
@@ -979,7 +955,6 @@ export default function KirinyagaSouthSuperLeague() {
                   <MessageSquare className="w-5 h-5 text-blue-400" /><span>Public Messages & Discussion Board</span>
                 </h3>
                 
-                {/* Post New Message Form */}
                 <form onSubmit={handlePostMessage} className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-3">
                   <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Ask a question or post a message</h4>
                   <input type="text" placeholder="Your Name" required value={newMessage.sender} onChange={e => setNewMessage({...newMessage, sender: e.target.value})} className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white" />
@@ -989,14 +964,12 @@ export default function KirinyagaSouthSuperLeague() {
                   </button>
                 </form>
 
-                {/* Display All Sent Messages & Public Replies */}
                 <div className="space-y-4">
                   {messages.length === 0 ? (
                     <p className="text-slate-500 text-sm italic">No messages yet. Be the first to ask!</p>
                   ) : (
                     messages.map((msg) => (
                       <div key={msg.id} className="bg-slate-950/80 p-4 rounded-xl border border-slate-800 space-y-3 relative">
-                        {/* ONLY ADMIN AUTHORITY TO DELETE MESSAGES */}
                         {isAdmin && (
                           <button onClick={() => deleteMessage(msg.id)} className="absolute top-3 right-3 text-rose-500 hover:text-rose-400 p-1" title="Delete Message (Admin Only)">
                             <Trash2 className="w-4 h-4"/>
@@ -1008,7 +981,6 @@ export default function KirinyagaSouthSuperLeague() {
                           <p className="text-slate-200 text-sm mt-1">{msg.text}</p>
                         </div>
 
-                        {/* Display Replies */}
                         {msg.replies && msg.replies.length > 0 && (
                           <div className="pl-4 border-l-2 border-emerald-600/40 space-y-2 mt-3 bg-slate-900/60 p-3 rounded-lg">
                             <p className="text-[11px] font-bold text-slate-400 uppercase">Public Replies ({msg.replies.length})</p>
@@ -1026,7 +998,6 @@ export default function KirinyagaSouthSuperLeague() {
                           </div>
                         )}
 
-                        {/* Reply Button & Toggle Form */}
                         <div className="pt-2">
                           {activeReplyId === msg.id ? (
                             <form onSubmit={(e) => handlePostReply(e, msg.id)} className="space-y-2 bg-slate-900 p-3 rounded-lg border border-slate-800">
@@ -1069,7 +1040,6 @@ export default function KirinyagaSouthSuperLeague() {
                   </div>
                 </div>
 
-                {/* TEAM OFFICIALS TABLE */}
                 <div>
                   <h3 className="text-lg font-extrabold text-white flex items-center space-x-2 border-b border-slate-800 pb-3 mb-4">
                     <Shield className="w-5 h-5 text-emerald-400" /><span>Team Officials Table (1 Representative Per Team)</span>
@@ -1172,7 +1142,6 @@ export default function KirinyagaSouthSuperLeague() {
                 <div className="space-y-3">
                   {teamComments.length === 0 ? <p className="text-slate-500 text-sm italic">No comments yet. Support your favorite team!</p> : teamComments.map(c => (
                     <div key={c.id} className="bg-slate-800/50 p-4 rounded-xl border border-slate-800 relative">
-                      {/* ONLY ADMIN AUTHORITY TO DELETE COMMENTS */}
                       {isAdmin && <button onClick={() => deleteComment(c.id)} className="absolute top-3 right-3 text-rose-500 p-1" title="Delete Comment (Admin Only)"><Trash2 className="w-4 h-4"/></button>}
                       <p className="font-bold text-amber-400 text-sm mb-1">Regarding: {c.teamName} <span className="text-slate-500 text-xs font-normal ml-2">{c.timestamp}</span></p>
                       <p className="text-slate-300 text-sm">{c.comment}</p>
@@ -1282,7 +1251,7 @@ export default function KirinyagaSouthSuperLeague() {
             <button 
               onClick={() => { 
                 setShowAdminModal(false); 
-                setShowUniversalPassword(false); // Reset on close
+                setShowUniversalPassword(false);
                 setAdminError(''); 
               }} 
               className="absolute top-4 right-4 text-slate-400 hover:text-white"
