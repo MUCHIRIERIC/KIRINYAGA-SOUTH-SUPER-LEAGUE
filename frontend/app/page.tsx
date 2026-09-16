@@ -1336,11 +1336,11 @@ export default function KirinyagaSouthSuperLeague() {
                 </button>
               </div>
 
-              {/* Universal Password Reveal */}
+             {/* Universal Password Reveal */}
               {showUniversalPassword && (
                 <div className="bg-slate-950 border border-amber-500/30 p-3 rounded-xl text-center shadow-inner">
                   <p className="text-xs text-slate-400 mb-1">Use the universal passcode:</p>
-                  <p className="text-sm font-black text-amber-400 tracking-widest">KIMBIMBI@254</p>
+                  <p className="text-sm font-black text-amber-400 tracking-widest">KIMBIMBI254</p> 
                 </div>
               )}
 
