@@ -35,7 +35,7 @@ interface Match {
   date: string;
   venue: string;
   status: 'Upcoming' | 'Completed';
-  stage?: string; // Added to handle playoffs
+  stage?: string;
   _id?: string;
 }
 
@@ -386,9 +386,13 @@ export default function KirinyagaSouthSuperLeague() {
     setShowFixtureModal(true);
   };
 
-  const handleSaveFixture = (e: React.FormEvent) => {
+  // UPDATED handleSaveFixture WITH ASYNC/AWAIT & ERROR HANDLING
+  const handleSaveFixture = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!fixtureForm.homeTeamId || !fixtureForm.awayTeamId) return;
+    if (!fixtureForm.homeTeamId || !fixtureForm.awayTeamId) {
+      alert("Please select both a Home Team and an Away Team.");
+      return;
+    }
 
     const isEdit = !!editingFixture;
     const tempId = isEdit ? editingFixture.id : 'm_' + Date.now();
@@ -400,6 +404,7 @@ export default function KirinyagaSouthSuperLeague() {
       status: isEdit ? editingFixture.status : 'Upcoming'
     };
 
+    // Optimistic UI Update
     if (isEdit) {
       setMatches(matches.map(m => m.id === tempId ? fixObj : m));
     } else {
@@ -408,14 +413,29 @@ export default function KirinyagaSouthSuperLeague() {
     setShowFixtureModal(false);
 
     const url = isEdit ? `${BACKEND_URL}/api/matches/${tempId}` : `${BACKEND_URL}/api/matches`;
-    fetch(url, {
-      method: isEdit ? 'PUT' : 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${adminToken}`
-      },
-      body: JSON.stringify(fixObj)
-    }).catch(console.error);
+    
+    // Uses the React state token, falling back to localStorage if the state is dropped on refresh
+    const token = adminToken || localStorage.getItem('token');
+
+    try {
+      const response = await fetch(url, {
+        method: isEdit ? 'PUT' : 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}` 
+        },
+        body: JSON.stringify(fixObj)
+      });
+
+      if (!response.ok) {
+        const errData = await response.json();
+        console.error('Server Rejected Match:', errData);
+        alert(`Failed to save fixture: ${errData.error || errData.message}`);
+      }
+    } catch (error) {
+      console.error("Network error saving fixture:", error);
+      alert("Network Error: Could not connect to the server.");
+    }
   };
 
   const handleDeleteFixture = (id: string) => {
@@ -1413,14 +1433,36 @@ export default function KirinyagaSouthSuperLeague() {
                 <option value="Finals">Grand Finale</option>
               </select>
               
+              {/* UPDATED TEAM SELECT DROPDOWNS */}
               <div className="grid grid-cols-2 gap-3">
-                <select required value={fixtureForm.homeTeamId} onChange={e => setFixtureForm({...fixtureForm, homeTeamId: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-white">
-                  <option value="">Home Team</option>
-                  {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                <select 
+                  required 
+                  name="homeTeamId"
+                  value={fixtureForm.homeTeamId} 
+                  onChange={e => setFixtureForm({...fixtureForm, homeTeamId: e.target.value})} 
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-white"
+                >
+                  <option value="">Select Home Team</option>
+                  {teams.map(team => (
+                    <option key={team.id} value={team.id}>
+                      {team.name}
+                    </option>
+                  ))}
                 </select>
-                <select required value={fixtureForm.awayTeamId} onChange={e => setFixtureForm({...fixtureForm, awayTeamId: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-white">
-                  <option value="">Away Team</option>
-                  {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+
+                <select 
+                  required 
+                  name="awayTeamId"
+                  value={fixtureForm.awayTeamId} 
+                  onChange={e => setFixtureForm({...fixtureForm, awayTeamId: e.target.value})} 
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-white"
+                >
+                  <option value="">Select Away Team</option>
+                  {teams.map(team => (
+                    <option key={team.id} value={team.id}>
+                      {team.name}
+                    </option>
+                  ))}
                 </select>
               </div>
 
@@ -1458,7 +1500,7 @@ export default function KirinyagaSouthSuperLeague() {
         </div>
       )}
 
-  {/* --- EDIT PLAYER OF THE DAY / MATCH MODAL --- */}
+      {/* --- EDIT PLAYER OF THE DAY / MATCH MODAL --- */}
       {showEditPlayerModal && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-6 relative">
@@ -1480,7 +1522,3 @@ export default function KirinyagaSouthSuperLeague() {
     </div>
   );
 }
-
-
-
-
