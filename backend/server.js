@@ -16,7 +16,6 @@ const JWT_SECRET = process.env.JWT_SECRET || 'kirinyaga_super_secret_key';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'KIMBIMBI254';
 
 // --- MONGOOSE SCHEMAS & MODELS ---
-
 const teamSchema = new mongoose.Schema({
   name: { type: String, required: true },
   town: { type: String, required: true },
@@ -39,7 +38,8 @@ const matchSchema = new mongoose.Schema({
   awayScore: { type: Number, default: null },
   date: { type: String, required: true },
   venue: { type: String, required: true },
-  status: { type: String, enum: ['Upcoming', 'Completed'], default: 'Upcoming' }
+  status: { type: String, enum: ['Upcoming', 'Completed'], default: 'Upcoming' },
+  stage: { type: String, default: 'Regular Season' } // Supports playoff fixtures
 }, { timestamps: true });
 const Match = mongoose.model('Match', matchSchema);
 
@@ -55,7 +55,8 @@ const LeagueInfo = mongoose.model('LeagueInfo', leagueInfoSchema);
 const messageSchema = new mongoose.Schema({
   sender: { type: String, required: true },
   text: { type: String, required: true },
-  timestamp: { type: String, required: true }
+  timestamp: { type: String, required: true },
+  replies: { type: Array, default: [] } // Supports nested community replies
 });
 const Message = mongoose.model('Message', messageSchema);
 
@@ -74,7 +75,6 @@ const awardSchema = new mongoose.Schema({
 });
 const Award = mongoose.model('Award', awardSchema);
 
-// NEW: Player Schema
 const playerSchema = new mongoose.Schema({
   name: { type: String, required: true },
   team: { type: mongoose.Schema.Types.ObjectId, ref: 'Team' },
@@ -84,13 +84,29 @@ const playerSchema = new mongoose.Schema({
 }, { timestamps: true });
 const Player = mongoose.model('Player', playerSchema);
 
-// NEW: HeroMedia Schema
 const heroMediaSchema = new mongoose.Schema({
   title: { type: String },
   url: { type: String, required: true },
   type: { type: String, enum: ['image', 'video'], default: 'image' }
 }, { timestamps: true });
 const HeroMedia = mongoose.model('HeroMedia', heroMediaSchema);
+
+const officialSchema = new mongoose.Schema({
+  teamId: { type: mongoose.Schema.Types.ObjectId, ref: 'Team', required: true },
+  officialName: { type: String, required: true },
+  role: { type: String, default: 'Team Representative' },
+  phone: { type: String, default: 'N/A' }
+});
+const Official = mongoose.model('Official', officialSchema);
+
+const playerHighlightSchema = new mongoose.Schema({
+  type: { type: String, enum: ['potd', 'potm'], required: true, unique: true },
+  name: { type: String, required: true },
+  team: { type: String }, 
+  match: { type: String }, 
+  mediaUrl: { type: String, required: true }
+});
+const PlayerHighlight = mongoose.model('PlayerHighlight', playerHighlightSchema);
 
 
 // --- AUTHENTICATION MIDDLEWARE ---
@@ -116,14 +132,8 @@ const verifyAdmin = (req, res, next) => {
 // 1. ADMIN LOGIN
 app.post('/api/admin/login', (req, res) => {
   try {
-    // Extract and format the email first
     const email = req.body?.email?.toString().trim().toLowerCase();
-    
-    // SANITIZED LOGGING: Only log the email, never the plaintext password
-    console.log(`Login attempt initiated for: ${email}`);
-    
     const password = req.body?.password?.toString().trim();
-    
     const authorizedEmails = ['muchirimunene031@gmail.com', 'munene398@gmail.com'];
     
     if (authorizedEmails.includes(email) && password === ADMIN_PASSWORD) {
@@ -131,14 +141,13 @@ app.post('/api/admin/login', (req, res) => {
       return res.json({ success: true, token, message: 'Authenticated successfully' });
     }
     
-    return res.status(401).json({ success: false, message: 'Access Denied. Incorrect email or password.' });
+    return res.status(401).json({ success: false, message: 'Access Denied.' });
   } catch (err) {
-    console.error('❌ Login Route Error:', err.message);
-    return res.status(500).json({ success: false, message: 'Internal Server Error', error: err.message });
+    return res.status(500).json({ success: false, message: 'Internal Server Error' });
   }
 });
 
-// 2. TEAMS ENDPOINTS
+// 2. TEAMS
 app.get('/api/teams', async (req, res) => {
   try {
     const teams = await Team.find({});
@@ -175,7 +184,7 @@ app.delete('/api/teams/:id', verifyAdmin, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// 3. MATCHES ENDPOINTS
+// 3. MATCHES
 app.get('/api/matches', async (req, res) => {
   try {
     const matches = await Match.find({})
@@ -188,7 +197,15 @@ app.get('/api/matches', async (req, res) => {
 
 app.post('/api/matches', verifyAdmin, async (req, res) => {
   try {
-    const match = new Match({ ...req.body, gameweek: Number(req.body.gameweek) });
+    // Correctly intercept and map homeTeamId & awayTeamId to database requirements
+    const match = new Match({ 
+      ...req.body, 
+      homeTeam: req.body.homeTeamId || req.body.homeTeam,
+      awayTeam: req.body.awayTeamId || req.body.awayTeam,
+      gameweek: Number(req.body.gameweek),
+      stage: req.body.stage || 'Regular Season'
+    });
+    
     await match.save();
     const populated = await Match.findById(match._id).populate('homeTeam awayTeam');
     res.status(201).json(populated);
@@ -197,7 +214,11 @@ app.post('/api/matches', verifyAdmin, async (req, res) => {
 
 app.put('/api/matches/:id', verifyAdmin, async (req, res) => {
   try {
-    const match = await Match.findByIdAndUpdate(req.params.id, req.body, { new: true }).populate('homeTeam awayTeam');
+    const updateData = { ...req.body };
+    if (updateData.homeTeamId) updateData.homeTeam = updateData.homeTeamId;
+    if (updateData.awayTeamId) updateData.awayTeam = updateData.awayTeamId;
+
+    const match = await Match.findByIdAndUpdate(req.params.id, updateData, { new: true }).populate('homeTeam awayTeam');
     res.json(match);
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
@@ -241,11 +262,13 @@ app.put('/api/matches/:id/score', verifyAdmin, async (req, res) => {
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
-// 4. PLAYERS ENDPOINTS
+// 4. PLAYERS & HIGHLIGHTS
 app.get('/api/players', async (req, res) => {
   try {
     const players = await Player.find().populate('team', 'name logo');
-    res.json(players);
+    const potd = await PlayerHighlight.findOne({ type: 'potd' });
+    const potm = await PlayerHighlight.findOne({ type: 'potm' });
+    res.json({ players, potd, potm });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -254,6 +277,20 @@ app.post('/api/players', verifyAdmin, async (req, res) => {
     const player = new Player(req.body);
     await player.save();
     res.status(201).json(player);
+  } catch (err) { res.status(400).json({ error: err.message }); }
+});
+
+app.post('/api/players/:type', verifyAdmin, async (req, res) => {
+  try {
+    const { type } = req.params;
+    if (type !== 'potd' && type !== 'potm') return res.status(400).json({ message: 'Invalid type' });
+    
+    const highlight = await PlayerHighlight.findOneAndUpdate(
+      { type },
+      { ...req.body, type },
+      { new: true, upsert: true }
+    );
+    res.json(highlight);
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
@@ -271,7 +308,7 @@ app.delete('/api/players/:id', verifyAdmin, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// 5. HERO MEDIA ENDPOINTS
+// 5. HERO MEDIA
 app.get('/api/heroMedia', async (req, res) => {
   try {
     const media = await HeroMedia.find().sort({ createdAt: -1 });
@@ -294,7 +331,7 @@ app.delete('/api/heroMedia/:id', verifyAdmin, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// 6. COMMUNITY ENDPOINTS (MESSAGES & COMMENTS)
+// 6. COMMUNITY (MESSAGES & COMMENTS)
 app.get('/api/messages', async (req, res) => {
   try { res.json(await Message.find().sort({ createdAt: -1 })); }
   catch (err) { res.status(500).json({ error: err.message }); }
@@ -303,6 +340,13 @@ app.get('/api/messages', async (req, res) => {
 app.post('/api/messages', async (req, res) => {
   try { res.status(201).json(await Message.create(req.body)); }
   catch (err) { res.status(400).json({ error: err.message }); }
+});
+
+app.put('/api/messages/:id', async (req, res) => {
+  try {
+    const msg = await Message.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    res.json(msg);
+  } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
 app.delete('/api/messages/:id', verifyAdmin, async (req, res) => {
@@ -325,7 +369,7 @@ app.delete('/api/comments/:id', verifyAdmin, async (req, res) => {
   catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// 7. AWARDS ENDPOINTS (POTD / POTM)
+// 7. AWARDS (LEGACY FALLBACK)
 app.get('/api/awards', async (req, res) => {
   try { res.json(await Award.find()); }
   catch (err) { res.status(500).json({ error: err.message }); }
@@ -342,7 +386,7 @@ app.put('/api/awards/:type', verifyAdmin, async (req, res) => {
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
-// 8. INFO ENDPOINTS
+// 8. INFO
 app.get('/api/info', async (req, res) => {
   try {
     let info = await LeagueInfo.findOne();
@@ -363,6 +407,18 @@ app.put('/api/info', verifyAdmin, async (req, res) => {
   try {
     const info = await LeagueInfo.findOneAndUpdate({}, req.body, { new: true, upsert: true });
     res.json(info);
+  } catch (err) { res.status(400).json({ error: err.message }); }
+});
+
+// 9. OFFICIALS
+app.post('/api/officials/:teamId', verifyAdmin, async (req, res) => {
+  try {
+    const official = await Official.findOneAndUpdate(
+      { teamId: req.params.teamId },
+      req.body,
+      { new: true, upsert: true }
+    );
+    res.json(official);
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
