@@ -1458,7 +1458,7 @@ export default function KirinyagaSouthSuperLeague() {
         </div>
       )}
 
-      {/* --- EDIT PLAYER OF THE DAY / MATCH MODAL --- */}
+  {/* --- EDIT PLAYER OF THE DAY / MATCH MODAL --- */}
       {showEditPlayerModal && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-6 relative">
@@ -1469,7 +1469,17 @@ export default function KirinyagaSouthSuperLeague() {
               <input type="text" placeholder={editingPlayerType === 'potd' ? "Team Name" : "Match Played"} required value={playerForm.context} onChange={e => setPlayerForm({...playerForm, context: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-white" />
               <div>
                 <label className="block text-xs text-slate-400 mb-1 flex items-center"><Video className="w-3 h-3 mr-1"/> Media URL (Image or .mp4)</label>
-                <input type="url" placeholder="https://..." value={playerForm.mediaUrl} onChange={e => setPlayerForm({...playerForm, mediaUrl: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-smHere are the specific updates implemented in `page (2).tsx`:
+                <input type="url" placeholder="https://..." value={playerForm.mediaUrl} onChange={e => setPlayerForm({...playerForm, mediaUrl: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-white" />
+              </div>
+              <button type="submit" className="w-full bg-emerald-600 text-white font-bold py-3 rounded-xl mt-4">Save Player</button>
+            </form>
+          </div>
+        </div>
+      )}
+
+    </div>
+  );
+}
 
 * **Standings Table Styling**: Added a conditional `<Trophy />` icon for the 1st position and applied a maroon background (`bg-[#800000]/40`) specifically to the 14th position (index 13) to indicate the relegation zone.
 * **Knockout Stages Section**: Appended a structured UI block at the bottom of the "Matches" tab featuring the exact requested breakdown: 4 Play-Offs, 4 Knockouts, 2 Semi-Finals, 1 Third-Place match, and 1 Grand Final. 
