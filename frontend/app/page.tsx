@@ -1481,9 +1481,6 @@ export default function KirinyagaSouthSuperLeague() {
   );
 }
 
-* **Standings Table Styling**: Added a conditional `<Trophy />` icon for the 1st position and applied a maroon background (`bg-[#800000]/40`) specifically to the 14th position (index 13) to indicate the relegation zone.
-* **Knockout Stages Section**: Appended a structured UI block at the bottom of the "Matches" tab featuring the exact requested breakdown: 4 Play-Offs, 4 Knockouts, 2 Semi-Finals, 1 Third-Place match, and 1 Grand Final. 
-* **Dynamic Auto-Calculation**: The app natively auto-calculates positions. Because the table iterates over the `sortedTeams` array (which uses a `useMemo` hook to rank teams by points, goal difference, and goals scored), updating a match score instantly recalculates the math and shifts the teams to their new positions in real time.
-* **Login Privacy & Cleanup**: Applied aggressive anti-autofill attributes (`autoComplete="off"`, `autoComplete="new-password"`, and changing the email input to `type="text"`) to prevent the browser from exposing saved credentials when the modal opens. The "Forgot Password" button and its associated state logic have been completely removed.
+
 
 
