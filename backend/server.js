@@ -39,7 +39,7 @@ const matchSchema = new mongoose.Schema({
   date: { type: String, required: true },
   venue: { type: String, required: true },
   status: { type: String, enum: ['Upcoming', 'Completed'], default: 'Upcoming' },
-  stage: { type: String, default: 'Regular Season' } // Supports playoff fixtures
+  stage: { type: String, default: 'Regular Season' }
 }, { timestamps: true });
 const Match = mongoose.model('Match', matchSchema);
 
@@ -56,7 +56,7 @@ const messageSchema = new mongoose.Schema({
   sender: { type: String, required: true },
   text: { type: String, required: true },
   timestamp: { type: String, required: true },
-  replies: { type: Array, default: [] } // Supports nested community replies
+  replies: { type: Array, default: [] }
 });
 const Message = mongoose.model('Message', messageSchema);
 
@@ -184,7 +184,7 @@ app.delete('/api/teams/:id', verifyAdmin, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// 3. MATCHES
+// 3. MATCHES (UPDATED FOR FULL PERSISTENCE & LOGGING)
 app.get('/api/matches', async (req, res) => {
   try {
     const matches = await Match.find({})
@@ -197,7 +197,7 @@ app.get('/api/matches', async (req, res) => {
 
 app.post('/api/matches', verifyAdmin, async (req, res) => {
   try {
-    // Correctly intercept and map homeTeamId & awayTeamId to database requirements
+    console.log('Incoming Fixture Payload:', req.body);
     const match = new Match({ 
       ...req.body, 
       homeTeam: req.body.homeTeamId || req.body.homeTeam,
@@ -209,18 +209,26 @@ app.post('/api/matches', verifyAdmin, async (req, res) => {
     await match.save();
     const populated = await Match.findById(match._id).populate('homeTeam awayTeam');
     res.status(201).json(populated);
-  } catch (err) { res.status(400).json({ error: err.message }); }
+  } catch (err) {
+    console.error('❌ Match Save Error:', err.message);
+    res.status(400).json({ error: err.message });
+  }
 });
 
 app.put('/api/matches/:id', verifyAdmin, async (req, res) => {
   try {
+    console.log(`Updating Match (${req.params.id}) Payload:`, req.body);
     const updateData = { ...req.body };
     if (updateData.homeTeamId) updateData.homeTeam = updateData.homeTeamId;
     if (updateData.awayTeamId) updateData.awayTeam = updateData.awayTeamId;
+    if (updateData.gameweek) updateData.gameweek = Number(updateData.gameweek);
 
     const match = await Match.findByIdAndUpdate(req.params.id, updateData, { new: true }).populate('homeTeam awayTeam');
     res.json(match);
-  } catch (err) { res.status(400).json({ error: err.message }); }
+  } catch (err) {
+    console.error(`❌ Match Update Error (${req.params.id}):`, err.message);
+    res.status(400).json({ error: err.message });
+  }
 });
 
 app.delete('/api/matches/:id', verifyAdmin, async (req, res) => {
@@ -232,6 +240,7 @@ app.delete('/api/matches/:id', verifyAdmin, async (req, res) => {
 
 app.put('/api/matches/:id/score', verifyAdmin, async (req, res) => {
   try {
+    console.log(`Updating Match Score (${req.params.id}):`, req.body);
     const { homeScore, awayScore } = req.body;
     const match = await Match.findById(req.params.id);
     if (!match) return res.status(404).json({ message: 'Match not found' });
@@ -239,6 +248,7 @@ app.put('/api/matches/:id/score', verifyAdmin, async (req, res) => {
     const homeVal = Number(homeScore);
     const awayVal = Number(awayScore);
 
+    // If status was Upcoming, update team statistics in DB once
     if (match.status === 'Upcoming') {
       const homeTeam = await Team.findById(match.homeTeam);
       const awayTeam = await Team.findById(match.awayTeam);
@@ -256,10 +266,17 @@ app.put('/api/matches/:id/score', verifyAdmin, async (req, res) => {
         await awayTeam.save();
       }
     }
-    match.homeScore = homeVal; match.awayScore = awayVal; match.status = 'Completed';
+    match.homeScore = homeVal;
+    match.awayScore = awayVal;
+    match.status = 'Completed';
     await match.save();
-    res.json(await Match.findById(match._id).populate('homeTeam awayTeam'));
-  } catch (err) { res.status(400).json({ error: err.message }); }
+    
+    const updatedMatch = await Match.findById(match._id).populate('homeTeam awayTeam');
+    res.json(updatedMatch);
+  } catch (err) {
+    console.error(`❌ Match Score Update Error (${req.params.id}):`, err.message);
+    res.status(400).json({ error: err.message });
+  }
 });
 
 // 4. PLAYERS & HIGHLIGHTS
